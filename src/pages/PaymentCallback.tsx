@@ -3,13 +3,14 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { verifyPayment } from '@/services/payment';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, ArrowRight } from 'lucide-react';
 
 export function PaymentCallback() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
+  const [deploymentId, setDeploymentId] = useState<string | null>(null);
 
   const reference = searchParams.get('reference');
   const trxref = searchParams.get('trxref');
@@ -30,6 +31,23 @@ export function PaymentCallback() {
         if (result.success && result.data?.status === 'success') {
           setStatus('success');
           setMessage(`Payment of ${result.data.currency} ${result.data.amount} was successful!`);
+          
+          // @ts-ignore - deploymentId comes from backend but isn't in type
+          const depId = result.data?.deploymentId;
+          if (depId) {
+            setDeploymentId(depId);
+          }
+          
+          // Redirect to deployment page after 2 seconds
+          setTimeout(() => {
+            // @ts-ignore - deploymentId comes from backend
+            const redirectId = result.data?.deploymentId || depId;
+            if (redirectId) {
+              navigate(`/deployment/${redirectId}`);
+            } else {
+              navigate('/dashboard');
+            }
+          }, 2000);
         } else {
           setStatus('error');
           setMessage(result.message || 'Payment verification failed');
@@ -41,7 +59,15 @@ export function PaymentCallback() {
     };
 
     verify();
-  }, [reference, trxref]);
+  }, [reference, trxref, navigate]);
+
+  const handleGoToDeployment = () => {
+    if (deploymentId) {
+      navigate(`/deployment/${deploymentId}`);
+    } else {
+      navigate('/dashboard');
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
@@ -63,7 +89,14 @@ export function PaymentCallback() {
               <div className="text-center">
                 <p className="text-lg font-semibold text-green-600">Payment Successful!</p>
                 <p className="text-gray-600 mt-2">{message}</p>
+                <p className="text-sm text-gray-500 mt-2">
+                  Redirecting to deployment status...
+                </p>
               </div>
+              <Button onClick={handleGoToDeployment} className="w-full">
+                View Deployment Status
+                <ArrowRight className="ml-2 w-4 h-4" />
+              </Button>
             </div>
           )}
 
@@ -74,16 +107,11 @@ export function PaymentCallback() {
                 <p className="text-lg font-semibold text-red-600">Payment Failed</p>
                 <p className="text-gray-600 mt-2">{message}</p>
               </div>
+              <Button onClick={() => navigate('/platform')} variant="outline" className="w-full">
+                Back to Platform
+              </Button>
             </div>
           )}
-
-          <Button 
-            onClick={() => navigate('/')} 
-            className="w-full"
-            variant={status === 'success' ? 'default' : 'outline'}
-          >
-            {status === 'success' ? 'Continue' : 'Back to Home'}
-          </Button>
         </CardContent>
       </Card>
     </div>

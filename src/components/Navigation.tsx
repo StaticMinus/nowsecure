@@ -12,6 +12,7 @@ const navItems = [
   { name: 'Partnerships', path: '/partnerships' },
   { name: 'Industries', path: '/industries' },
   { name: 'Contact', path: '/contact' },
+  { name: 'Dashboard', path: '/dashboard' },
 ];
 
 export function Navigation() {
