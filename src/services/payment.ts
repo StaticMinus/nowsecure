@@ -31,6 +31,8 @@ export interface VerifyResponse {
     customer: {
       email: string;
     };
+    purchaseId?: string;
+    deploymentId?: string;
   };
   message?: string;
 }

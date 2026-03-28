@@ -27,56 +27,67 @@ function MainLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Routes that use the main layout (with nav and footer)
-function MainRoutes() {
-  return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/services" element={<Services />} />
-      <Route path="/products" element={<Products />} />
-      <Route path="/platform" element={<SecurityPlatform />} />
-      <Route path="/partnerships" element={<Partnerships />} />
-      <Route path="/industries" element={<Industries />} />
-      <Route path="/contact" element={<Contact />} />
-    </Routes>
-  );
-}
-
-function App() {
+function AppContent() {
   const location = useLocation();
-  
-  // Check if current route is a dashboard route (no nav/footer)
-  const isDashboardRoute = location.pathname.startsWith('/dashboard') || 
-                           location.pathname.startsWith('/deployment') ||
-                           location.pathname === '/payment/callback';
 
   return (
     <div className="min-h-screen bg-white">
-      {isDashboardRoute ? (
-        // Dashboard routes - no nav/footer
-        <Routes>
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
+          {/* Dashboard routes - no nav/footer */}
           <Route path="/dashboard" element={<UserDashboard />} />
           <Route path="/deployment/:deploymentId" element={<DeploymentDetail />} />
           <Route path="/payment/callback" element={<PaymentCallback />} />
+          
+          {/* Main routes - with nav and footer */}
+          <Route path="/" element={
+            <MainLayout>
+              <Home />
+            </MainLayout>
+          } />
+          <Route path="/services" element={
+            <MainLayout>
+              <Services />
+            </MainLayout>
+          } />
+          <Route path="/products" element={
+            <MainLayout>
+              <Products />
+            </MainLayout>
+          } />
+          <Route path="/platform" element={
+            <MainLayout>
+              <SecurityPlatform />
+            </MainLayout>
+          } />
+          <Route path="/partnerships" element={
+            <MainLayout>
+              <Partnerships />
+            </MainLayout>
+          } />
+          <Route path="/industries" element={
+            <MainLayout>
+              <Industries />
+            </MainLayout>
+          } />
+          <Route path="/contact" element={
+            <MainLayout>
+              <Contact />
+            </MainLayout>
+          } />
         </Routes>
-      ) : (
-        // Main routes - with nav and footer
-        <MainLayout>
-          <MainRoutes />
-        </MainLayout>
-      )}
+      </AnimatePresence>
       <Toaster />
     </div>
   );
 }
 
-// Wrap with Router
-function AppWrapper() {
+function App() {
   return (
     <Router>
-      <App />
+      <AppContent />
     </Router>
   );
 }
 
-export default AppWrapper;
+export default App;

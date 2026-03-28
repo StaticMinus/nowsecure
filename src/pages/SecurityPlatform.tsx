@@ -98,7 +98,7 @@ const deploymentStages = [
 ];
 
 // Authentication Step
-function AuthenticationStep({ onAuthenticated }: { onAuthenticated: () => void }) {
+function AuthenticationStep({ onAuthenticated }: { onAuthenticated: (devId: string) => void }) {
   const [developerType, setDeveloperType] = useState('');
   const [developerId, setDeveloperId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -113,7 +113,7 @@ function AuthenticationStep({ onAuthenticated }: { onAuthenticated: () => void }
 
     if (developerId === AUTHORIZED_DEVELOPER_ID) {
       toast.success('Authentication successful!');
-      onAuthenticated();
+      onAuthenticated(developerId);
     } else {
       setError('Invalid Developer Console ID. Access denied.');
       toast.error('Authentication failed. Please check your Developer ID.');
@@ -354,7 +354,7 @@ function DeploymentConfigStep({ onComplete }: { onComplete: (config: any) => voi
 }
 
 // Payment Step
-function PaymentStep({ config }: { config: any; onPaymentComplete: () => void }) {
+function PaymentStep({ config }: { config: any }) {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const handlePaystackPayment = async () => {
@@ -371,6 +371,7 @@ function PaymentStep({ config }: { config: any; onPaymentComplete: () => void })
           amount: config.provider.price,
           currency: 'USD',
           metadata: {
+            developerId: config.developerId,
             domain: config.domain,
             hosting: config.hostingType,
             provider: config.provider.name,
@@ -716,16 +717,19 @@ function DeploymentDashboard({ config }: { config: any }) {
 export function SecurityPlatform() {
   const [step, setStep] = useState<'auth' | 'config' | 'payment' | 'deployment'>('auth');
   const [config, setConfig] = useState<any>(null);
+  const [developerId, setDeveloperId] = useState<string>('');
 
-  const handleAuthenticated = () => setStep('config');
+  const handleAuthenticated = (devId: string) => {
+    setDeveloperId(devId);
+    setStep('config');
+  };
   
   const handleConfigComplete = (cfg: any) => {
-    setConfig(cfg);
+    setConfig({ ...cfg, developerId });
     setStep('payment');
   };
 
-  // Payment completion handled by callback page after Paystack redirect
-  const _handlePaymentComplete = () => setStep('deployment');
+  // Note: Payment completion is handled by the callback page after Paystack redirect
 
   return (
     <motion.main
@@ -819,7 +823,7 @@ export function SecurityPlatform() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
               >
-                <PaymentStep config={config} onPaymentComplete={_handlePaymentComplete} />
+                <PaymentStep config={config} />
               </motion.div>
             )}
             {step === 'deployment' && config && (
