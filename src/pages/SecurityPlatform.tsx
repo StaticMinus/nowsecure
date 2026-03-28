@@ -356,23 +356,45 @@ function DeploymentConfigStep({ onComplete }: { onComplete: (config: any) => voi
 // Payment Step
 function PaymentStep({ config, onPaymentComplete }: { config: any; onPaymentComplete: () => void }) {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [cardNumber, setCardNumber] = useState('');
-  const [expiry, setExpiry] = useState('');
-  const [cvv, setCvv] = useState('');
 
-  const handlePayment = async () => {
+  const handlePaystackPayment = async () => {
     setIsProcessing(true);
     
-    // Simulate Paystack payment processing
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
-    toast.success('Payment successful! Layer Rising process initiated.');
-    onPaymentComplete();
-    setIsProcessing(false);
+    try {
+      // Call backend to initialize Paystack transaction
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${API_URL}/api/payment/initialize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: `user@${config.domain}`,
+          amount: config.provider.price,
+          currency: 'USD',
+          metadata: {
+            domain: config.domain,
+            hosting: config.hostingType,
+            provider: config.provider.name,
+          }
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success && result.data?.authorization_url) {
+        // Redirect to Paystack payment page
+        window.location.href = result.data.authorization_url;
+      } else {
+        toast.error(result.message || 'Failed to initialize payment');
+        setIsProcessing(false);
+      }
+    } catch (error) {
+      toast.error('Payment initialization failed');
+      setIsProcessing(false);
+    }
   };
 
-  // Convert USD to Nigerian Naira (approximate rate)
-  const nairaAmount = Math.round(config.provider.price * 1550);
+  // Convert USD to Nigerian Naira (1 USD = 1,383.46 NGN)
+  const nairaAmount = Math.round(config.provider.price * 1383.46);
 
   return (
     <motion.div
@@ -420,70 +442,53 @@ function PaymentStep({ config, onPaymentComplete }: { config: any; onPaymentComp
             </div>
           </div>
 
-          {/* Payment Form */}
+          {/* Paystack Payment */}
           <div className="space-y-4">
-            <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg">
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <CreditCard className="w-5 h-5 text-green-600" />
+            <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg border border-green-200">
+              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                <CreditCard className="w-6 h-6 text-green-600" />
               </div>
-              <div>
-                <div className="font-medium text-green-800">Paystack</div>
-                <div className="text-sm text-green-600">Secure card payment</div>
+              <div className="flex-1">
+                <div className="font-semibold text-green-800">Paystack</div>
+                <div className="text-sm text-green-600">Secure online payment • One-click checkout</div>
               </div>
             </div>
 
-            <div className="space-y-3">
-              <Label>Card Number</Label>
-              <Input
-                placeholder="0000 0000 0000 0000"
-                value={cardNumber}
-                onChange={(e) => setCardNumber(e.target.value)}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-3">
-                <Label>Expiry Date</Label>
-                <Input
-                  placeholder="MM/YY"
-                  value={expiry}
-                  onChange={(e) => setExpiry(e.target.value)}
-                />
-              </div>
-              <div className="space-y-3">
-                <Label>CVV</Label>
-                <Input
-                  placeholder="123"
-                  type="password"
-                  value={cvv}
-                  onChange={(e) => setCvv(e.target.value)}
-                />
+            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+              <div className="flex items-center gap-2 text-blue-700 text-sm">
+                <Shield className="w-4 h-4" />
+                <span>You'll be redirected to Paystack's secure payment page</span>
               </div>
             </div>
           </div>
 
           <Button
-            onClick={handlePayment}
-            disabled={!cardNumber || !expiry || !cvv || isProcessing}
+            onClick={handlePaystackPayment}
+            disabled={isProcessing}
             size="lg"
-            className="w-full bg-gradient-to-r from-green-600 to-green-500"
+            className="w-full bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600"
           >
             {isProcessing ? (
               <>
                 <Loader2 className="mr-2 w-5 h-5 animate-spin" />
-                Processing Payment...
+                Redirecting to Paystack...
               </>
             ) : (
               <>
                 <CreditCard className="mr-2 w-5 h-5" />
-                Pay ₦{nairaAmount.toLocaleString()}
+                Pay ₦{nairaAmount.toLocaleString()} with Paystack
               </>
             )}
           </Button>
 
-          <p className="text-xs text-slate-500 text-center">
-            Powered by Paystack. Your payment information is secure.
-          </p>
+          <div className="text-center space-y-2">
+            <p className="text-xs text-slate-500">
+              Exchange Rate: 1 USD = 1,383.46 NGN
+            </p>
+            <p className="text-xs text-slate-400">
+              Powered by Paystack. Your payment is secured with bank-grade encryption.
+            </p>
+          </div>
         </CardContent>
       </Card>
     </motion.div>
