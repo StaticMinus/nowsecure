@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: nowsecure-api
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PAYSTACK_SECRET_KEY
+        sync: false  # Set this in Render dashboard
+      - key: FRONTEND_URL
+        value: https://nowsecure.vercel.app  # Update with your Vercel URL

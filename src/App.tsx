@@ -9,6 +9,7 @@ import { SecurityPlatform } from './pages/SecurityPlatform';
 import { Partnerships } from './pages/Partnerships';
 import { Industries } from './pages/Industries';
 import { Contact } from './pages/Contact';
+import { PaymentCallback } from './pages/PaymentCallback';
 import { Toaster } from '@/components/ui/sonner';
 
 function App() {
@@ -25,6 +26,7 @@ function App() {
             <Route path="/partnerships" element={<Partnerships />} />
             <Route path="/industries" element={<Industries />} />
             <Route path="/contact" element={<Contact />} />
+            <Route path="/payment/callback" element={<PaymentCallback />} />
           </Routes>
         </AnimatePresence>
         <Footer />
