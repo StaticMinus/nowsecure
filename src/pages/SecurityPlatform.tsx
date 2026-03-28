@@ -354,7 +354,7 @@ function DeploymentConfigStep({ onComplete }: { onComplete: (config: any) => voi
 }
 
 // Payment Step
-function PaymentStep({ config, onPaymentComplete }: { config: any; onPaymentComplete: () => void }) {
+function PaymentStep({ config }: { config: any; onPaymentComplete: () => void }) {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const handlePaystackPayment = async () => {
@@ -724,7 +724,8 @@ export function SecurityPlatform() {
     setStep('payment');
   };
 
-  const handlePaymentComplete = () => setStep('deployment');
+  // Payment completion handled by callback page after Paystack redirect
+  const _handlePaymentComplete = () => setStep('deployment');
 
   return (
     <motion.main
@@ -818,7 +819,7 @@ export function SecurityPlatform() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
               >
-                <PaymentStep config={config} onPaymentComplete={handlePaymentComplete} />
+                <PaymentStep config={config} onPaymentComplete={_handlePaymentComplete} />
               </motion.div>
             )}
             {step === 'deployment' && config && (
