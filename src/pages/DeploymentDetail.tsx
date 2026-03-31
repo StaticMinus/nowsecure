@@ -7,20 +7,15 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
-  Shield,
   Loader2,
   CheckCircle,
   XCircle,
-  Clock,
   ArrowLeft,
-  Server,
   Database,
   Globe,
   Lock,
   Zap,
   Layout,
-  ExternalLink,
-  ChevronRight,
   Eye,
   Activity,
   AlertTriangle,
@@ -77,7 +72,7 @@ export function DeploymentDetail() {
           });
           
           const freshData = await getDeployment(deployment.deploymentId);
-          if (freshData.success) setDeployment(freshData.data);
+          if (freshData.success && freshData.data) setDeployment(freshData.data);
           // Faster simulation for better UX
           await new Promise(r => setTimeout(r, 600));
         }
