@@ -562,6 +562,20 @@ app.use(client.middleware());
 console.log('Neural Shield Active [Port 443]');`}
                     </pre>
                   </div>
+                  <div className="px-6 py-4 border-t border-slate-800 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded bg-blue-500/10 flex items-center justify-center relative">
+                      <Globe className="w-4 h-4 text-blue-500" />
+                      <motion.div 
+                        animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                        className="absolute inset-0 bg-blue-500 rounded-full"
+                      />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-white">Global Edge Node</p>
+                      <p className="text-[10px] text-emerald-500 font-mono">Uptime: 99.98% • Active</p>
+                    </div>
+                  </div>
                 </Card>
               </TabsContent>
               
@@ -597,7 +611,11 @@ console.log('Neural Shield Active [Port 443]');`}
                     </div>
                     <Button 
                       onClick={() => {
-                        toast.success("Security protocols synchronized to node edge");
+                        toast.promise(new Promise(res => setTimeout(res, 2000)), {
+                          loading: 'Syncing protocol changes across nodes...',
+                          success: 'Infrastructure protocol synchronized',
+                          error: 'Protocol synchronization failed',
+                        });
                       }}
                       variant="outline" 
                       className="w-full border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 text-blue-400 hover:text-blue-300"
@@ -628,30 +646,80 @@ console.log('Neural Shield Active [Port 443]');`}
               </CardContent>
             </Card>
 
-            <Card className="bg-slate-900 border-slate-800">
-              <CardHeader className="pb-3 px-6">
-                <CardTitle className="text-sm text-slate-400 font-mono uppercase tracking-widest">Global Activity</CardTitle>
-              </CardHeader>
-              <CardContent className="px-6 pb-6 pt-0 space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded bg-orange-500/10 flex items-center justify-center">
-                    <Globe className="w-4 h-4 text-orange-500" />
+            {/* Interactive Shell */}
+            <Card className="bg-black border-slate-800 shadow-2xl overflow-hidden">
+              <div className="bg-slate-900 px-4 py-2 flex items-center justify-between border-b border-slate-800">
+                <div className="flex items-center gap-4">
+                  <div className="flex gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
                   </div>
-                  <div>
-                    <p className="text-xs font-bold text-white">Lagos, NG</p>
-                    <p className="text-[10px] text-slate-500">Node Sync Complete</p>
-                  </div>
+                  <span className="text-[10px] font-mono text-slate-500">ns_shell — session active</span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded bg-blue-500/10 flex items-center justify-center">
-                    <Globe className="w-4 h-4 text-blue-500" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-white">London, UK</p>
-                    <p className="text-[10px] text-slate-500">Heuristic Analysis (Running)</p>
-                  </div>
-                </div>
-              </CardContent>
+                <Badge variant="outline" className="text-[9px] border-emerald-500/30 text-emerald-400 bg-emerald-500/5">CONNECTED</Badge>
+              </div>
+              <div className="p-4 font-mono text-xs h-[220px] overflow-y-auto bg-black" id="shell-output">
+                <p className="text-slate-600 mb-1">NowSecure Shell v4.2.0 — Type 'help' for commands</p>
+                <p className="text-white">root@nowsecure:~# ns-verify --target redaidnigeria.org</p>
+                <p className="text-blue-400">CHECKING CORE INTEGRITY... [OK]</p>
+                <p className="text-rose-400 font-bold">THREAT DETECTED: WP_CORP_MALWARE</p>
+                <p className="text-emerald-500">Rebuilding permission matrix... [DONE]</p>
+              </div>
+              <div className="px-4 py-2 border-t border-slate-800 flex items-center gap-2">
+                <span className="text-emerald-500 text-xs font-mono">root@nowsecure:~#</span>
+                <input
+                  type="text"
+                  className="flex-1 bg-transparent text-white text-xs font-mono outline-none border-none placeholder-slate-700"
+                  placeholder="Type a command..."
+                  id="shell-input"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const input = e.currentTarget;
+                      const cmd = input.value.trim();
+                      if (!cmd) return;
+                      const output = document.getElementById('shell-output');
+                      if (!output) return;
+
+                      const cmdLine = document.createElement('p');
+                      cmdLine.className = 'text-white';
+                      cmdLine.textContent = `root@nowsecure:~# ${cmd}`;
+                      output.appendChild(cmdLine);
+
+                      const response = document.createElement('p');
+                      if (cmd === 'help') {
+                        response.className = 'text-blue-400';
+                        response.textContent = 'Commands: ns-status, ns-scan <domain>, ns-services, ns-keygen, clear, whoami';
+                      } else if (cmd === 'ns-status') {
+                        response.className = 'text-emerald-400';
+                        response.textContent = 'All systems operational. Firewall: ACTIVE | Nodes: 3 | Uptime: 99.98%';
+                      } else if (cmd.startsWith('ns-scan')) {
+                        response.className = 'text-amber-400';
+                        response.textContent = `Scanning ${cmd.split(' ')[1] || 'target'}... Threats: 2 detected | Risk Score: 88.4/100`;
+                      } else if (cmd === 'ns-services') {
+                        response.className = 'text-emerald-400';
+                        response.textContent = 'WP Malware Removal: ACTIVE | PHP Sanitizer: ACTIVE | Traffic Scrubber: ACTIVE';
+                      } else if (cmd === 'ns-keygen') {
+                        response.className = 'text-blue-400';
+                        response.textContent = `Generated: ssh-rsa AAAAB3Nza...${Math.random().toString(36).substr(2, 20)} user@nowsecure`;
+                      } else if (cmd === 'whoami') {
+                        response.className = 'text-white';
+                        response.textContent = `developer@nowsecure [${userData?.user?.developerId || 'authenticated'}]`;
+                      } else if (cmd === 'clear') {
+                        output.innerHTML = '<p class="text-slate-600">NowSecure Shell v4.2.0 — Type \'help\' for commands</p>';
+                        input.value = '';
+                        return;
+                      } else {
+                        response.className = 'text-rose-400';
+                        response.textContent = `ns: command not found: ${cmd}`;
+                      }
+                      output.appendChild(response);
+                      output.scrollTop = output.scrollHeight;
+                      input.value = '';
+                    }
+                  }}
+                />
+              </div>
             </Card>
             
             {/* Purchase History Summary */}
