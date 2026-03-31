@@ -108,7 +108,8 @@ export function UserDashboard() {
       const result = await loginUser(developerId.trim());
       if (result.success) {
         toast.success('Authentication successful!');
-        await loadUserData(developerId.trim());
+        localStorage.setItem('developerId', developerId.trim());
+        window.location.reload();
       } else {
         setError(result.message || 'Authentication failed');
       }
@@ -125,6 +126,7 @@ export function UserDashboard() {
     setUserData(null);
     setDeveloperId('');
     toast.success('Logged out successfully');
+    navigate('/');
   };
 
   const getStatusIcon = (status: string) => {
@@ -156,7 +158,7 @@ export function UserDashboard() {
   };
 
   // Login Form
-  if (!isAuthenticated) {
+  if (!isAuthenticated && !localStorage.getItem('developerId')) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center relative overflow-hidden">
         {/* Animated Background */}
@@ -658,12 +660,16 @@ console.log('Neural Shield Active [Port 443]');`}
                 <CardTitle className="text-xs text-slate-500 uppercase font-mono">Ledger History</CardTitle>
               </CardHeader>
               <CardContent className="px-6 pb-6 pt-0 space-y-3">
-                 {userData?.purchases.slice(0, 3).map(p => (
-                   <div key={p.purchaseId} className="flex justify-between items-center text-[10px] font-mono border-b border-slate-800 pb-2">
-                     <span className="text-slate-400">TX_{p.purchaseId.substr(4, 6)}</span>
-                     <span className="text-white font-bold">${p.amountUsd}</span>
-                   </div>
-                 ))}
+                  {userData?.purchases && userData.purchases.length > 0 ? (
+                    userData.purchases.slice(0, 5).map(p => (
+                      <div key={p.purchaseId} className="flex justify-between items-center text-[10px] font-mono border-b border-slate-800 pb-2 hover:bg-white/5 transition-colors">
+                        <span className="text-slate-400">TX_{p.purchaseId?.toString().substr(0, 8)}</span>
+                        <span className="text-white font-bold">${p.amountUsd}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-[10px] text-slate-600 text-center italic">No transaction records found</p>
+                  )}
                  <Button variant="link" size="sm" className="w-full text-[10px] text-blue-500 hover:text-blue-400 p-0 h-auto">
                     View Full Transaction Logs
                  </Button>
