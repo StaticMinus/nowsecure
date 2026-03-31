@@ -248,7 +248,7 @@ export function UserDashboard() {
               </div>
               <div className="hidden sm:flex items-center gap-4">
                 <Badge variant="outline" className="font-mono bg-blue-500/5 border-blue-500/20 text-blue-400 py-1.5 px-3">
-                  DEV_UID: {userData?.user.developerId.split('-')[2]}
+                  DEV_UID: {userData?.user?.developerId?.split('-')?.[2] || 'WAITING'}
                 </Badge>
                 <Link to="/services">
                   <Button variant="ghost" className="text-slate-400 hover:text-white border border-slate-800 hover:bg-slate-800">

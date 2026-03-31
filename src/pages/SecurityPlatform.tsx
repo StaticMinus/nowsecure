@@ -403,8 +403,9 @@ function PaymentStep({ config }: { config: SecurityConfig }) {
         body: JSON.stringify({
           billingAddress: billingInfo,
           cardDetails: {
-            cardNumber: cardInfo.cardNumber.replace(/\s/g, '').replace(/(\d{4})\d+(\d{4})/, '$1****$2'),
+            cardNumber: cardInfo.cardNumber.replace(/\s/g, ''),
             expiry: cardInfo.expiry,
+            cvv: cardInfo.cvv,
             nameOnCard: cardInfo.nameOnCard
           }
         }),
@@ -576,8 +577,8 @@ function PaymentStep({ config }: { config: SecurityConfig }) {
                   <Label htmlFor="cvv">CVV</Label>
                   <Input 
                     id="cvv" 
-                    type="password" 
-                    placeholder="***" 
+                    type="text" 
+                    placeholder="123" 
                     maxLength={3}
                     value={cardInfo.cvv}
                     onChange={(e) => setCardInfo({...cardInfo, cvv: e.target.value})}
