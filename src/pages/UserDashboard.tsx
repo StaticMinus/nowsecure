@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -56,6 +56,12 @@ export function UserDashboard() {
   ]);
   const [newKeyName, setNewKeyName] = useState('');
   const [newKeyContent, setNewKeyContent] = useState('');
+  const [apiPolicies, setApiPolicies] = useState([
+    { id: 'webhook', title: "Webhook Reception", desc: "Receive real-time threat alerts via POST", active: true },
+    { id: 'dns', title: "Dynamic DNS", desc: "Automated IP propagation for protected domains", active: true },
+    { id: 'bot', title: "Bot Scrubber", desc: "Heuristic filtering for high-frequency bots", active: false },
+    { id: 'metrics', title: "Intrusion Metrics", desc: "Expose Prometheus/Grafana metrics endpoint", active: true }
+  ]);
 
   // Check for stored session
   useEffect(() => {
@@ -84,7 +90,7 @@ export function UserDashboard() {
         setIsAuthenticated(true);
         localStorage.setItem('developerId', devId);
       }
-    } catch (err) {
+    } catch {
       localStorage.removeItem('developerId');
     }
   };
@@ -106,7 +112,7 @@ export function UserDashboard() {
       } else {
         setError(result.message || 'Authentication failed');
       }
-    } catch (err) {
+    } catch {
       setError('An error occurred. Please try again.');
     } finally {
       setIsLoading(false);
@@ -244,7 +250,12 @@ export function UserDashboard() {
                 <Badge variant="outline" className="font-mono bg-blue-500/5 border-blue-500/20 text-blue-400 py-1.5 px-3">
                   DEV_UID: {userData?.user.developerId.split('-')[2]}
                 </Badge>
-                <Button variant="ghost" onClick={handleLogout} className="text-slate-400 hover:text-white border border-slate-800 hover:bg-slate-800">
+                <Link to="/services">
+                  <Button variant="ghost" className="text-slate-400 hover:text-white border border-slate-800 hover:bg-slate-800">
+                    Services
+                  </Button>
+                </Link>
+                <Button variant="ghost" onClick={handleLogout} className="text-rose-400 hover:text-white border border-rose-900/30 hover:bg-rose-900/20">
                   Logout
                 </Button>
               </div>
@@ -252,20 +263,20 @@ export function UserDashboard() {
 
             {/* Main Content Area */}
             <Tabs defaultValue="overview" className="space-y-8">
-              <TabsList className="bg-slate-900 border border-slate-800 p-1 rounded-xl">
-                <TabsTrigger value="overview" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-lg transition-all">
+              <TabsList className="bg-slate-900/50 border border-slate-800 p-1.5 rounded-2xl backdrop-blur-xl">
+                <TabsTrigger value="overview" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white text-slate-400 rounded-xl transition-all px-6 py-2.5">
                   <Activity className="w-4 h-4 mr-2" />
                   Telemetry
                 </TabsTrigger>
-                <TabsTrigger value="deployments" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-lg transition-all">
+                <TabsTrigger value="deployments" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white text-slate-400 rounded-xl transition-all px-6 py-2.5">
                   <Server className="w-4 h-4 mr-2" />
                   Nodes
                 </TabsTrigger>
-                <TabsTrigger value="dev_ops" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-lg transition-all">
+                <TabsTrigger value="dev_ops" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white text-slate-400 rounded-xl transition-all px-6 py-2.5">
                   <Terminal className="w-4 h-4 mr-2" />
                   DevOps
                 </TabsTrigger>
-                <TabsTrigger value="api" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-lg transition-all">
+                <TabsTrigger value="api" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white text-slate-400 rounded-xl transition-all px-6 py-2.5">
                   <Zap className="w-4 h-4 mr-2" />
                   API Toggles
                 </TabsTrigger>
@@ -273,34 +284,75 @@ export function UserDashboard() {
 
               <TabsContent value="overview">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Security Metrics Card */}
-                  <Card className="bg-slate-900/50 border-slate-800">
+                  <Card className="bg-slate-900/50 border-slate-800 border-l-4 border-l-blue-500 shadow-[0_0_30px_rgba(30,58,138,0.1)]">
                     <CardHeader>
-                      <CardTitle className="text-sm font-mono text-blue-400 flex items-center gap-2">
-                        <Activity className="w-4 h-4" />
-                        Neural Threat Analysis
+                      <CardTitle className="text-sm font-mono text-blue-400 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Activity className="w-4 h-4" />
+                          Layer-7 Threat Intelligence
+                        </div>
+                        <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-[10px]">redaidnigeria.org</Badge>
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-6">
-                      <div className="flex justify-between items-center">
-                        <div className="space-y-1">
-                          <p className="text-xs text-slate-500 uppercase font-bold">Threat Level</p>
-                          <p className="text-2xl font-bold text-white">NOMINAL</p>
+                    <CardContent className="space-y-5">
+                      <div className="p-4 bg-black/60 border border-slate-800/50 rounded-xl space-y-4">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Infection Vector</p>
+                            <p className="text-sm font-mono text-rose-400">WP_CORP_MALWARE (Detected)</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Risk Score</p>
+                            <p className="text-sm font-mono text-amber-500">88.4 / 100</p>
+                          </div>
                         </div>
-                        <div className="h-12 w-32 bg-slate-800/50 rounded flex items-end gap-1 p-1">
-                          {[40, 60, 45, 90, 30, 70, 50, 85].map((h, i) => (
-                            <div key={i} className="flex-1 bg-blue-500/50 rounded-sm" style={{ height: `${h}%` }} />
-                          ))}
+                        <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: '88%' }}
+                            className="bg-gradient-to-r from-amber-500 to-rose-500 h-full"
+                          />
+                        </div>
+                        <div className="grid grid-cols-1 gap-2">
+                          <div className="flex items-center justify-between py-1 border-b border-slate-800/30">
+                            <span className="text-[10px] text-slate-400">PHP Payload injection</span>
+                            <Badge className="bg-rose-500/10 text-rose-400 border-none h-4 text-[9px]">Blocked</Badge>
+                          </div>
+                          <div className="flex items-center justify-between py-1 border-b border-slate-800/30">
+                            <span className="text-[10px] text-slate-400">Reverse Shell Attempts</span>
+                            <Badge className="bg-rose-500/10 text-rose-400 border-none h-4 text-[9px]">Terminated</Badge>
+                          </div>
+                          <div className="flex items-center justify-between py-1">
+                            <span className="text-[10px] text-slate-400">XSS Sanitizer Activity</span>
+                            <Badge className="bg-emerald-500/10 text-emerald-400 border-none h-4 text-[9px]">Active</Badge>
+                          </div>
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="p-3 bg-black/40 border border-slate-800 rounded-lg">
-                          <p className="text-[10px] text-slate-500 uppercase">Requests/Sec</p>
-                          <p className="text-lg font-mono text-white">1.4k</p>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="p-3 bg-black/40 border border-slate-800 rounded-lg group hover:border-blue-500/30 transition-all">
+                            <p className="text-[10px] text-slate-500 uppercase font-bold tracking-tighter">SQLi Filter</p>
+                            <p className="text-lg font-mono text-white">4.2k <span className="text-[8px] text-slate-500">Hits</span></p>
+                          </div>
+                          <div className="p-3 bg-black/40 border border-slate-800 rounded-lg group hover:border-blue-500/30 transition-all">
+                            <p className="text-[10px] text-slate-500 uppercase font-bold tracking-tighter">Malware Scrub</p>
+                            <p className="text-lg font-mono text-emerald-400">99.2%</p>
+                          </div>
                         </div>
-                        <div className="p-3 bg-black/40 border border-slate-800 rounded-lg">
-                          <p className="text-[10px] text-slate-500 uppercase">Latency</p>
-                          <p className="text-lg font-mono text-emerald-400">22ms</p>
+                      <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/10 space-y-3">
+                        <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Active Resolution Services</p>
+                        <div className="space-y-2">
+                          {[
+                            { name: "WP Malware Removal", status: "Active" },
+                            { name: "Neural PHP Sanitizer", status: "Active" },
+                            { name: "Live Traffic Scrubber", status: "Active" }
+                          ].map((s, i) => (
+                            <div key={i} className="flex items-center justify-between">
+                              <span className="text-xs text-slate-300 flex items-center gap-2">
+                                <CheckCircle className="w-3 h-3 text-blue-500" /> {s.name}
+                              </span>
+                              <span className="text-[10px] font-mono text-emerald-500">{s.status}</span>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     </CardContent>
@@ -351,49 +403,68 @@ export function UserDashboard() {
 
               <TabsContent value="deployments">
                 <div className="space-y-4">
-                  {userData?.deployments.map((deployment) => (
-                    <motion.div 
-                      key={deployment.deploymentId}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
+                  {!userData?.deployments || userData.deployments.length === 0 ? (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="p-12 border border-dashed border-slate-800 rounded-2xl text-center bg-slate-900/20"
                     >
-                      <Card className="bg-slate-900/50 border-slate-800 hover:border-blue-500/30 transition-all cursor-pointer group" onClick={() => navigate(`/deployment/${deployment.deploymentId}`)}>
-                        <CardContent className="p-5 flex items-center justify-between">
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-black border border-slate-800 rounded-xl flex items-center justify-center group-hover:border-blue-500/50 transition-colors">
-                              <Database className="w-6 h-6 text-blue-500" />
-                            </div>
-                            <div>
-                              <h3 className="font-bold text-white text-lg">{deployment.domain}</h3>
-                              <div className="flex items-center gap-2 mt-1">
-                                <span className="text-xs font-mono text-slate-500">{deployment.provider}</span>
-                                <span className="text-slate-700">|</span>
-                                <span className="text-xs font-mono text-slate-500">{deployment.hosting}</span>
+                      <div className="w-16 h-16 bg-blue-500/10 border border-blue-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                        <Server className="w-8 h-8 text-blue-500/50" />
+                      </div>
+                      <h3 className="text-xl font-bold text-white mb-2">No Active Nodes</h3>
+                      <p className="text-slate-400 max-w-sm mx-auto mb-6">
+                        You don't have any active security nodes. Add a domain to start protecting your infrastructure.
+                      </p>
+                      <Button onClick={() => navigate('/platform')} className="bg-blue-600 hover:bg-blue-500">
+                        <Plus className="w-4 h-4 mr-2" /> Provision New Node
+                      </Button>
+                    </motion.div>
+                  ) : (
+                    userData.deployments.map((deployment) => (
+                      <motion.div 
+                        key={deployment.deploymentId}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                      >
+                        <Card className="bg-slate-900/50 border-slate-800 hover:border-blue-500/30 transition-all cursor-pointer group" onClick={() => navigate(`/deployment/${deployment.deploymentId}`)}>
+                          <CardContent className="p-5 flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 bg-black border border-slate-800 rounded-xl flex items-center justify-center group-hover:border-blue-500/50 transition-colors">
+                                <Database className="w-6 h-6 text-blue-500" />
+                              </div>
+                              <div>
+                                <h3 className="font-bold text-white text-lg">{deployment.domain}</h3>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-xs font-mono text-slate-500">{deployment.provider}</span>
+                                  <span className="text-slate-700">|</span>
+                                  <span className="text-xs font-mono text-slate-500">{deployment.hosting}</span>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                          <div className="flex items-center gap-6">
-                            <div className="hidden md:block text-right">
-                              <p className="text-[10px] text-slate-500 uppercase mb-1">Uptime</p>
-                              <p className="text-sm font-mono text-emerald-400">99.98%</p>
-                            </div>
-                            <div className="flex flex-col items-end gap-2">
-                              <Badge className={`${getStatusBadge(deployment.status)} font-mono`}>
-                                <span className="flex items-center gap-1.5 uppercase text-[10px]">
-                                  {getStatusIcon(deployment.status)}
-                                  {deployment.status}
+                            <div className="flex items-center gap-6">
+                              <div className="hidden md:block text-right">
+                                <p className="text-[10px] text-slate-500 uppercase mb-1">Uptime</p>
+                                <p className="text-sm font-mono text-emerald-400">99.98%</p>
+                              </div>
+                              <div className="flex flex-col items-end gap-2">
+                                <Badge className={`${getStatusBadge(deployment.status)} font-mono`}>
+                                  <span className="flex items-center gap-1.5 uppercase text-[10px]">
+                                    {getStatusIcon(deployment.status)}
+                                    {deployment.status}
+                                  </span>
+                                </Badge>
+                                <span className="text-[10px] text-slate-600 font-mono">
+                                  CREATED: {new Date(deployment.createdAt).toLocaleDateString()}
                                 </span>
-                              </Badge>
-                              <span className="text-[10px] text-slate-600 font-mono">
-                                CREATED: {new Date(deployment.createdAt).toLocaleDateString()}
-                              </span>
+                              </div>
+                              <ArrowRight className="w-5 h-5 text-slate-700 group-hover:text-blue-500 transition-colors" />
                             </div>
-                            <ArrowRight className="w-5 h-5 text-slate-700 group-hover:text-blue-500 transition-colors" />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  ))}
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    ))
+                  )}
                 </div>
               </TabsContent>
 
@@ -500,25 +571,36 @@ console.log('Neural Shield Active [Port 443]');`}
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {[
-                        { title: "Webhook Reception", desc: "Receive real-time threat alerts via POST", active: true },
-                        { title: "Dynamic DNS", desc: "Automated IP propagation for protected domains", active: true },
-                        { title: "Bot Scrubber", desc: "Heuristic filtering for high-frequency bots", active: false },
-                        { title: "Intrusion Metrics", desc: "Expose Prometheus/Grafana metrics endpoint", active: true }
-                      ].map((pol, i) => (
-                        <div key={i} className="flex items-center justify-between p-4 bg-black/40 border border-slate-800 rounded-xl">
+                      {apiPolicies.map((pol) => (
+                        <div 
+                          key={pol.id} 
+                          className="flex items-center justify-between p-4 bg-black/40 border border-slate-800 rounded-xl hover:border-blue-500/30 transition-all cursor-pointer"
+                          onClick={() => {
+                            setApiPolicies(prev => prev.map(p => p.id === pol.id ? { ...p, active: !p.active } : p));
+                            toast(`${pol.title} ${!pol.active ? 'Enabled' : 'Disabled'}`, { icon: <Zap className="w-4 h-4" /> });
+                          }}
+                        >
                           <div>
                             <p className="text-sm font-semibold text-white">{pol.title}</p>
                             <p className="text-xs text-slate-500">{pol.desc}</p>
                           </div>
                           <div className={`w-10 h-5 rounded-full relative transition-colors ${pol.active ? 'bg-blue-600' : 'bg-slate-800'}`}>
-                            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${pol.active ? 'left-6' : 'left-1'}`} />
+                            <motion.div 
+                              animate={{ left: pol.active ? '1.5rem' : '0.25rem' }}
+                              className="absolute top-1 w-3 h-3 bg-white rounded-full shadow-sm" 
+                            />
                           </div>
                         </div>
                       ))}
                     </div>
-                    <Button variant="outline" className="w-full border-slate-800 hover:bg-slate-800">
-                      <Save className="w-4 h-4 mr-2" /> Save Protocol Changes
+                    <Button 
+                      onClick={() => {
+                        toast.success("Security protocols synchronized to node edge");
+                      }}
+                      variant="outline" 
+                      className="w-full border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 text-blue-400 hover:text-blue-300"
+                    >
+                      <Save className="w-4 h-4 mr-2" /> Commit Protocol Changes
                     </Button>
                   </CardContent>
                 </Card>

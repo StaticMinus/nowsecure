@@ -142,6 +142,14 @@ function userExists(developerId) {
   return users.has(developerId);
 }
 
+async function getPurchase(purchaseId) {
+  if (process.env.DATABASE_URL) {
+    const res = await pool.query('SELECT * FROM purchases WHERE purchase_id = $1', [purchaseId]);
+    return res.rows[0];
+  }
+  return purchases.get(purchaseId);
+}
+
 // Purchase management
 async function createPurchase(purchaseData) {
   const purchaseId = `PUR-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
