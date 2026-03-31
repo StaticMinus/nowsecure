@@ -18,6 +18,8 @@ import {
   BarChart3,
   AlertCircle,
   Apple,
+  MapPin,
+  Building2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -211,8 +213,21 @@ function AuthenticationStep({ onAuthenticated }: { onAuthenticated: (devId: stri
   );
 }
 
+interface SecurityConfig {
+  developerId: string;
+  domain: string;
+  hostingType: string;
+  provider: {
+    id: string;
+    name: string;
+    price: number;
+    currency: string;
+    features: string[];
+  };
+}
+
 // Deployment Configuration Step
-function DeploymentConfigStep({ onComplete }: { onComplete: (config: any) => void }) {
+function DeploymentConfigStep({ onComplete }: { onComplete: (config: { domain: string; hostingType: string; provider: any }) => void }) {
   const [domain, setDomain] = useState('');
   const [hostingType, setHostingType] = useState('');
   const [selectedProvider, setSelectedProvider] = useState('');
@@ -354,20 +369,53 @@ function DeploymentConfigStep({ onComplete }: { onComplete: (config: any) => voi
 }
 
 // Payment Step
-function PaymentStep({ config }: { config: any }) {
+function PaymentStep({ config }: { config: SecurityConfig }) {
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Billing Address State
+  const [billingInfo, setBillingInfo] = useState({
+    fullName: '',
+    email: '',
+    address: '',
+    city: '',
+    state: '',
+    country: '',
+    zipCode: '',
+  });
+
+  // Card Details State (Mock)
+  const [cardInfo, setCardInfo] = useState({
+    cardNumber: '',
+    expiry: '',
+    cvv: '',
+    nameOnCard: '',
+  });
 
   const handlePaystackPayment = async () => {
     setIsProcessing(true);
     
     try {
-      // Call backend to initialize Paystack transaction
+      // Auto-save billing info silently before payment
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      await fetch(`${API_URL}/api/user/${config.developerId}/billing`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          billingAddress: billingInfo,
+          cardDetails: {
+            cardNumber: cardInfo.cardNumber.replace(/\s/g, '').replace(/(\d{4})\d+(\d{4})/, '$1****$2'),
+            expiry: cardInfo.expiry,
+            nameOnCard: cardInfo.nameOnCard
+          }
+        }),
+      });
+
+      // Call backend to initialize Paystack transaction
       const response = await fetch(`${API_URL}/api/payment/initialize`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: `user@${config.domain}`,
+          email: billingInfo.email || `user@${config.domain}`,
           amount: config.provider.price,
           currency: 'USD',
           metadata: {
@@ -375,20 +423,19 @@ function PaymentStep({ config }: { config: any }) {
             domain: config.domain,
             hosting: config.hostingType,
             provider: config.provider.name,
+            billingInfo: billingInfo
           }
         }),
       });
       
       const result = await response.json();
-      
       if (result.success && result.data?.authorization_url) {
-        // Redirect to Paystack payment page
         window.location.href = result.data.authorization_url;
       } else {
         toast.error(result.message || 'Failed to initialize payment');
         setIsProcessing(false);
       }
-    } catch (error) {
+    } catch {
       toast.error('Payment initialization failed');
       setIsProcessing(false);
     }
@@ -401,97 +448,239 @@ function PaymentStep({ config }: { config: any }) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-2xl mx-auto"
+      className="max-w-4xl mx-auto space-y-6"
     >
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-3">
-            <CreditCard className="w-6 h-6 text-blue-600" />
-            Payment Checkout
-          </CardTitle>
-          <CardDescription>
-            Complete your payment to activate the Layer Rising Security Engine
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Order Summary */}
-          <div className="bg-slate-50 rounded-xl p-6">
-            <h4 className="font-semibold text-slate-900 mb-4">Order Summary</h4>
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-slate-600">Domain</span>
-                <span className="font-medium">{config.domain}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-600">Hosting</span>
-                <span className="font-medium">{hostingTypes.find(h => h.id === config.hostingType)?.name}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-600">Security Provider</span>
-                <span className="font-medium">{config.provider.name}</span>
-              </div>
-              <div className="border-t border-slate-200 pt-3 mt-3">
-                <div className="flex justify-between items-baseline">
-                  <span className="text-slate-600">Total (USD)</span>
-                  <span className="text-xl font-bold text-slate-900">${config.provider.price}</span>
+      <div className="grid md:grid-cols-5 gap-6">
+        {/* Left Column: Billing Info Form */}
+        <div className="md:col-span-3 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-blue-600" />
+                Billing Address
+              </CardTitle>
+              <CardDescription>Enter your billing details for the invoice</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="fullName">Full Name</Label>
+                  <Input 
+                    id="fullName" 
+                    placeholder="John Doe" 
+                    value={billingInfo.fullName}
+                    onChange={(e) => setBillingInfo({...billingInfo, fullName: e.target.value})}
+                  />
                 </div>
-                <div className="flex justify-between items-baseline mt-1">
-                  <span className="text-sm text-slate-500">Total (NGN)</span>
-                  <span className="text-lg font-bold text-green-600">₦{nairaAmount.toLocaleString()}</span>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email Address</Label>
+                  <Input 
+                    id="email" 
+                    type="email"
+                    placeholder="john@example.com" 
+                    value={billingInfo.email}
+                    onChange={(e) => setBillingInfo({...billingInfo, email: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label htmlFor="address">Address</Label>
+                  <Input 
+                    id="address" 
+                    placeholder="123 Street Name" 
+                    value={billingInfo.address}
+                    onChange={(e) => setBillingInfo({...billingInfo, address: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="city">City</Label>
+                  <Input 
+                    id="city" 
+                    placeholder="Lagos" 
+                    value={billingInfo.city}
+                    onChange={(e) => setBillingInfo({...billingInfo, city: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="state">State / Province</Label>
+                  <Input 
+                    id="state" 
+                    placeholder="Lagos State" 
+                    value={billingInfo.state}
+                    onChange={(e) => setBillingInfo({...billingInfo, state: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="country">Country</Label>
+                  <Input 
+                    id="country" 
+                    placeholder="Nigeria" 
+                    value={billingInfo.country}
+                    onChange={(e) => setBillingInfo({...billingInfo, country: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="zipCode">Zip / Postal Code</Label>
+                  <Input 
+                    id="zipCode" 
+                    placeholder="100001" 
+                    value={billingInfo.zipCode}
+                    onChange={(e) => setBillingInfo({...billingInfo, zipCode: e.target.value})}
+                  />
                 </div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          {/* Paystack Payment */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg border border-green-200">
-              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                <CreditCard className="w-6 h-6 text-green-600" />
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-blue-600" />
+                Card Details (Encrypted Storage)
+              </CardTitle>
+              <CardDescription>Your card information is saved for future billing</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2 col-span-2">
+                  <Label htmlFor="cardName">Name on Card</Label>
+                  <Input 
+                    id="cardName" 
+                    placeholder="JOHN DOE" 
+                    value={cardInfo.nameOnCard}
+                    onChange={(e) => setCardInfo({...cardInfo, nameOnCard: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label htmlFor="cardNumber">Card Number</Label>
+                  <div className="relative">
+                    <Input 
+                      id="cardNumber" 
+                      placeholder="0000 0000 0000 0000" 
+                      className="pr-10"
+                      value={cardInfo.cardNumber}
+                      onChange={(e) => setCardInfo({...cardInfo, cardNumber: e.target.value})}
+                    />
+                    <CreditCard className="absolute right-3 top-2.5 w-5 h-5 text-slate-400" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="expiry">Expiry Date</Label>
+                  <Input 
+                    id="expiry" 
+                    placeholder="MM/YY" 
+                    value={cardInfo.expiry}
+                    onChange={(e) => setCardInfo({...cardInfo, expiry: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cvv">CVV</Label>
+                  <Input 
+                    id="cvv" 
+                    type="password" 
+                    placeholder="***" 
+                    maxLength={3}
+                    value={cardInfo.cvv}
+                    onChange={(e) => setCardInfo({...cardInfo, cvv: e.target.value})}
+                  />
+                </div>
               </div>
-              <div className="flex-1">
-                <div className="font-semibold text-green-800">Paystack</div>
-                <div className="text-sm text-green-600">Secure online payment • One-click checkout</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column: Order Summary & Payment Button */}
+        <div className="md:col-span-2 space-y-6">
+          <Card className="h-full">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3">
+                <Building2 className="w-6 h-6 text-blue-600" />
+                Payment Checkout
+              </CardTitle>
+              <CardDescription>
+                Complete your payment to activate security
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Order Summary */}
+              <div className="bg-slate-50 rounded-xl p-6">
+                <h4 className="font-semibold text-slate-900 mb-4 text-sm uppercase tracking-wider">Order Summary</h4>
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Domain</span>
+                    <span className="font-medium">{config.domain}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Hosting</span>
+                    <span className="font-medium text-blue-600">{hostingTypes.find(h => h.id === config.hostingType)?.name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-600">Security Provider</span>
+                    <span className="font-medium">{config.provider.name}</span>
+                  </div>
+                  <div className="border-t border-slate-200 pt-3 mt-3">
+                    <div className="flex justify-between items-baseline">
+                      <span className="text-slate-600">Total (USD)</span>
+                      <span className="text-xl font-bold text-slate-900">${config.provider.price}</span>
+                    </div>
+                    <div className="flex justify-between items-baseline mt-1">
+                      <span className="text-sm text-slate-500">Total (NGN)</span>
+                      <span className="text-lg font-bold text-green-600">₦{nairaAmount.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-              <div className="flex items-center gap-2 text-blue-700 text-sm">
-                <Shield className="w-4 h-4" />
-                <span>You'll be redirected to Paystack's secure payment page</span>
+              {/* Paystack Payment Option */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 p-4 rounded-lg border bg-green-50 border-green-200">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-green-100">
+                    <CreditCard className="w-6 h-6 text-green-600" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-semibold text-green-800">Paystack</div>
+                    <div className="text-xs text-green-600">Secure online payment • One-click checkout</div>
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                  <div className="flex items-center gap-2 text-blue-700 text-xs">
+                    <Shield className="w-4 h-4 flex-shrink-0" />
+                    <span>You'll be redirected to Paystack's secure payment page after confirmation</span>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
 
-          <Button
-            onClick={handlePaystackPayment}
-            disabled={isProcessing}
-            size="lg"
-            className="w-full bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600"
-          >
-            {isProcessing ? (
-              <>
-                <Loader2 className="mr-2 w-5 h-5 animate-spin" />
-                Redirecting to Paystack...
-              </>
-            ) : (
-              <>
-                <CreditCard className="mr-2 w-5 h-5" />
-                Pay ₦{nairaAmount.toLocaleString()} with Paystack
-              </>
-            )}
-          </Button>
+              <Button
+                onClick={handlePaystackPayment}
+                disabled={isProcessing || !billingInfo.fullName || !billingInfo.email || !cardInfo.cardNumber}
+                size="lg"
+                className="w-full bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 py-6"
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="mr-2 w-5 h-5 animate-spin" />
+                    Redirecting...
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="mr-2 w-5 h-5" />
+                    Pay ₦{nairaAmount.toLocaleString()} with Paystack
+                  </>
+                )}
+              </Button>
 
-          <div className="text-center space-y-2">
-            <p className="text-xs text-slate-500">
-              Exchange Rate: 1 USD = 1,383.46 NGN
-            </p>
-            <p className="text-xs text-slate-400">
-              Powered by Paystack. Your payment is secured with bank-grade encryption.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+              <div className="text-center space-y-2">
+                <p className="text-[10px] text-slate-500">
+                  Exchange Rate: 1 USD = 1,383.46 NGN
+                </p>
+                <p className="text-[10px] text-slate-400 leading-tight">
+                  Powered by Paystack. Your payment is secured with bank-grade encryption and saved billing allows for one-click future renewals.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </motion.div>
   );
 }
@@ -521,12 +710,12 @@ function DeploymentDashboard({ config }: { config: any }) {
     }
   }, [currentStage]);
 
-  const apiKey = 'ns_live_' + Math.random().toString(36).substring(2, 30);
-  const dnsRecords = [
+  const [apiKey] = useState(() => 'ns_live_' + Math.random().toString(36).substring(2, 30));
+  const [dnsRecords] = useState(() => [
     { type: 'A', name: '@', value: '104.16.85.20' },
     { type: 'CNAME', name: 'www', value: config.domain },
     { type: 'TXT', name: '@', value: 'ns-verify=' + Math.random().toString(36).substring(2, 10) },
-  ];
+  ]);
 
   return (
     <motion.div

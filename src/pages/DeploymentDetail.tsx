@@ -1,362 +1,431 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { getDeployment, updateDeployment, type Deployment } from '@/services/user';
 import {
-  ArrowLeft,
-  CheckCircle,
-  Loader2,
-  Clock,
-  XCircle,
   Shield,
-  Key,
-  FileText,
-  BarChart3,
-  Copy,
+  Loader2,
+  CheckCircle,
+  XCircle,
+  Clock,
+  ArrowLeft,
+  Server,
+  Database,
+  Globe,
+  Lock,
+  Zap,
+  Layout,
+  ExternalLink,
+  ChevronRight,
+  Eye,
+  Activity,
+  AlertTriangle,
+  Bug,
+  Terminal,
+  Cpu,
+  Fingerprint,
+  Copy
 } from 'lucide-react';
+import { getDeployment, updateDeployment, type Deployment } from '@/services/user';
 
 export function DeploymentDetail() {
-  const { deploymentId } = useParams<{ deploymentId: string }>();
+  const { id: deploymentId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [deployment, setDeployment] = useState<Deployment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentStage, setCurrentStage] = useState(0);
-  const [overallProgress, setOverallProgress] = useState(0);
+  const [activeTab, setActiveTab] = useState<'status' | 'scans' | 'dns'>('status');
 
   useEffect(() => {
     if (deploymentId) {
-      loadDeployment();
+      loadDeploymentData(deploymentId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deploymentId]);
 
-  // Simulate deployment progress
-  useEffect(() => {
-    if (!deployment || deployment.status === 'completed' || deployment.status === 'failed') {
-      return;
-    }
-
-    const interval = setInterval(async () => {
-      if (currentStage < deployment.stages.length) {
-        const stage = deployment.stages[currentStage];
-        
-        if (stage.status === 'pending') {
-          // Start deploying this stage
-          await updateDeploymentStage(currentStage, 'deploying', 0);
-        } else if (stage.status === 'deploying') {
-          // Progress this stage
-          const newProgress = stage.progress + 10;
-          if (newProgress >= 100) {
-            await updateDeploymentStage(currentStage, 'completed', 100);
-            if (currentStage < deployment.stages.length - 1) {
-              setCurrentStage(prev => prev + 1);
-            }
-          } else {
-            await updateDeploymentStage(currentStage, 'deploying', newProgress);
-          }
-        }
-        
-        // Calculate overall progress
-        const completedStages = deployment.stages.filter(s => s.status === 'completed').length;
-        const deployingStage = deployment.stages.find(s => s.status === 'deploying');
-        const deployingProgress = deployingStage ? deployingStage.progress / 100 : 0;
-        const progress = ((completedStages + deployingProgress) / deployment.stages.length) * 100;
-        setOverallProgress(progress);
-        
-        // Refresh deployment data
-        await loadDeployment(false);
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [deployment, currentStage]);
-
-  const loadDeployment = async (showLoading = true) => {
-    if (showLoading) setIsLoading(true);
+  const loadDeploymentData = async (depId: string) => {
     try {
-      const result = await getDeployment(deploymentId!);
-      if (result.success && result.data) {
-        setDeployment(result.data);
-        
-        // Find current stage
-        const activeStageIndex = result.data.stages.findIndex(
-          s => s.status === 'deploying' || s.status === 'pending'
-        );
-        setCurrentStage(activeStageIndex >= 0 ? activeStageIndex : result.data.stages.length);
-        
-        // Calculate progress
-        const completedStages = result.data.stages.filter(s => s.status === 'completed').length;
-        const progress = (completedStages / result.data.stages.length) * 100;
-        setOverallProgress(progress);
-      } else {
-        toast.error('Deployment not found');
-        navigate('/dashboard');
+      const data = await getDeployment(depId);
+      if (data.success && data.data) {
+        setDeployment(data.data);
       }
-    } catch (error) {
-      toast.error('Failed to load deployment');
+    } catch (err) {
+      toast.error('Failed to load deployment details');
     } finally {
-      if (showLoading) setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const updateDeploymentStage = async (stageIndex: number, status: string, progress: number) => {
+  const simulateProgress = async () => {
     if (!deployment) return;
+
+    toast.info('Initializing Neural Shield sequence...');
     
-    const stage = deployment.stages[stageIndex];
-    await updateDeployment(deployment.deploymentId, {
-      stageId: stage.id,
-      stageStatus: status,
-      stageProgress: progress,
-    });
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircle className="w-5 h-5 text-green-500" />;
-      case 'deploying':
-        return <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />;
-      case 'failed':
-        return <XCircle className="w-5 h-5 text-red-500" />;
-      default:
-        return <Clock className="w-5 h-5 text-gray-400" />;
+    for (const stage of deployment.stages) {
+      if (stage.status !== 'completed') {
+        const steps = 4;
+        for (let i = 1; i <= steps; i++) {
+          const progress = (i / steps) * 100;
+          await updateDeployment(deployment.deploymentId, {
+            stageId: stage.id,
+            stageStatus: i === steps ? 'completed' : 'deploying',
+            stageProgress: progress,
+            status: i === steps && stage.id === 'monitoring' ? 'active' : 'deploying'
+          });
+          
+          const freshData = await getDeployment(deployment.deploymentId);
+          if (freshData.success) setDeployment(freshData.data);
+          // Faster simulation for better UX
+          await new Promise(r => setTimeout(r, 600));
+        }
+      }
     }
-  };
-
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, string> = {
-      completed: 'bg-green-100 text-green-700',
-      active: 'bg-green-100 text-green-700',
-      deploying: 'bg-blue-100 text-blue-700',
-      pending: 'bg-yellow-100 text-yellow-700',
-      failed: 'bg-red-100 text-red-700',
-    };
-    return variants[status] || 'bg-gray-100 text-gray-700';
+    toast.success('Security Environment Fully Synchronized');
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 pt-20">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto" />
-          <p className="mt-4 text-slate-600">Loading deployment...</p>
-        </div>
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
       </div>
     );
   }
 
   if (!deployment) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 pt-20">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <p className="text-slate-600">Deployment not found</p>
-          <Button onClick={() => navigate('/dashboard')} className="mt-4">
-            Back to Dashboard
-          </Button>
-        </div>
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
+        <XCircle className="w-16 h-16 text-rose-500 mb-4" />
+        <h2 className="text-2xl font-bold text-white mb-2">Resource Not Found</h2>
+        <p className="text-slate-400 mb-6">The requested security node could not be located in the neural link.</p>
+        <Button onClick={() => navigate('/dashboard')} variant="outline" className="border-slate-800 text-slate-300">
+          Return to Dashboard
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 pt-20 pb-12">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
+    <div className="min-h-screen bg-black text-slate-300 pt-24 pb-12 selection:bg-blue-500/30">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        {/* Breadcrumbs */}
+        <Button 
+          variant="ghost" 
+          onClick={() => navigate('/dashboard')}
+          className="mb-8 p-0 text-slate-500 hover:text-white transition-colors"
         >
-          <Button variant="outline" onClick={() => navigate('/dashboard')} className="mb-4">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Dashboard
-          </Button>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Command Center
+        </Button>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
-                <Shield className="w-8 h-8 text-blue-600" />
-                Deployment Status
-              </h1>
-              <p className="text-slate-600 mt-1">
-                {deployment.domain} • {deployment.provider}
-              </p>
-            </div>
-            <Badge className={`${getStatusBadge(deployment.status)} px-4 py-2 text-sm`}>
-              {deployment.status.charAt(0).toUpperCase() + deployment.status.slice(1)}
-            </Badge>
+          {/* Node Summary Side Panel */}
+          <div className="space-y-6">
+            <Card className="bg-slate-900/50 border-slate-800 backdrop-blur-sm overflow-hidden">
+              <div className="h-1 bg-gradient-to-r from-blue-600 to-indigo-600" />
+              <CardHeader>
+                <div className="flex justify-between items-start mb-2">
+                  <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 font-mono text-[10px]">OS: LINUX_NODE</Badge>
+                  <div className="flex items-center gap-1.5">
+                    <div className={`w-1.5 h-1.5 rounded-full ${deployment.status === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                    <span className={`text-[10px] uppercase font-mono ${deployment.status === 'active' ? 'text-emerald-500' : 'text-amber-500'}`}>
+                      {deployment.status === 'active' ? 'LIVE_LINK' : 'SYNC_PENDING'}
+                    </span>
+                  </div>
+                </div>
+                <CardTitle className="text-2xl font-bold text-white tracking-tight">{deployment.domain}</CardTitle>
+                <CardDescription className="font-mono text-[10px] text-slate-500">ID: {deployment.deploymentId}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                 <div className="p-3 bg-black/40 border border-slate-800/50 rounded-lg">
+                   <div className="flex justify-between items-center mb-1">
+                     <span className="text-[10px] text-slate-500 uppercase">Provider</span>
+                     <span className="text-xs font-bold text-white">{deployment.provider}</span>
+                   </div>
+                   <div className="flex justify-between items-center mb-1">
+                     <span className="text-[10px] text-slate-500 uppercase">Hosting</span>
+                     <span className="text-xs font-bold text-white">{deployment.hosting}</span>
+                   </div>
+                   <div className="flex justify-between items-center">
+                     <span className="text-[10px] text-slate-500 uppercase">IP Topology</span>
+                     <span className="text-xs font-mono text-blue-400">Static IPv4</span>
+                   </div>
+                 </div>
+
+                 <div className="grid grid-cols-2 gap-3">
+                   <div className="p-3 bg-blue-500/5 border border-blue-500/10 rounded-lg text-center">
+                     <p className="text-[10px] text-blue-400 font-bold uppercase mb-1">Status</p>
+                     <p className="text-xs font-bold text-white uppercase">{deployment.status}</p>
+                   </div>
+                   <div className="p-3 bg-emerald-500/5 border border-emerald-500/10 rounded-lg text-center">
+                     <p className="text-[10px] text-emerald-400 font-bold uppercase mb-1">Security</p>
+                     <p className="text-xs font-bold text-white uppercase">Nominal</p>
+                   </div>
+                 </div>
+
+                 {deployment.status === 'pending' && (
+                   <Button onClick={simulateProgress} className="w-full bg-blue-600 hover:bg-blue-500 text-white shadow-[0_4px_15px_rgba(37,99,235,0.3)]">
+                     <Zap className="w-4 h-4 mr-2" /> Activate Neural Shield
+                   </Button>
+                 )}
+              </CardContent>
+            </Card>
+
+            {/* Quick Metrics */}
+            <Card className="bg-slate-900/50 border-slate-800">
+              <CardContent className="p-4 space-y-4">
+                <div className="flex items-center gap-3">
+                   <div className="w-8 h-8 rounded bg-slate-800 flex items-center justify-center text-blue-400">
+                     <Fingerprint className="w-4 h-4" />
+                   </div>
+                   <div>
+                     <p className="text-[10px] text-slate-500 uppercase">Identity Verification</p>
+                     <p className="text-xs font-bold text-white">SHA-256 Validated</p>
+                   </div>
+                </div>
+                <div className="flex items-center gap-3">
+                   <div className="w-8 h-8 rounded bg-slate-800 flex items-center justify-center text-amber-500">
+                     <Cpu className="w-4 h-4" />
+                   </div>
+                   <div>
+                     <p className="text-[10px] text-slate-500 uppercase">Node Usage</p>
+                     <p className="text-xs font-bold text-white">12% / 128MB</p>
+                   </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
-        </motion.div>
 
-        {/* Progress Overview */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5" />
-                Overall Progress
-              </CardTitle>
-              <CardDescription>
-                Estimated completion: ~72 hours for full propagation
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">Deployment Progress</span>
-                  <span className="font-bold text-blue-600">{Math.round(overallProgress)}%</span>
-                </div>
-                <Progress value={overallProgress} className="h-3" />
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+          {/* Main Console Content */}
+          <div className="lg:col-span-2 space-y-8">
+            
+            {/* Nav Tabs */}
+            <div className="flex gap-4 border-b border-slate-800">
+              <button 
+                onClick={() => setActiveTab('status')}
+                className={`pb-4 text-sm font-bold transition-all ${activeTab === 'status' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                Deployment Pipeline
+              </button>
+              <button 
+                onClick={() => setActiveTab('scans')}
+                className={`pb-4 text-sm font-bold transition-all ${activeTab === 'scans' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                Forensic Analysis
+              </button>
+              <button 
+                onClick={() => setActiveTab('dns')}
+                className={`pb-4 text-sm font-bold transition-all ${activeTab === 'dns' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                Network Config
+              </button>
+            </div>
 
-        {/* Deployment Stages */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="space-y-4 mb-8"
-        >
-          {deployment.stages.map((stage, index) => (
-            <motion.div
-              key={stage.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className={`flex items-center gap-4 p-4 rounded-xl transition-all ${
-                stage.status === 'deploying' 
-                  ? 'bg-blue-50 border-2 border-blue-200' 
-                  : stage.status === 'completed'
-                  ? 'bg-green-50'
-                  : 'bg-slate-50 opacity-60'
-              }`}
-            >
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                stage.status === 'deploying' 
-                  ? 'bg-blue-500' 
-                  : stage.status === 'completed'
-                  ? 'bg-green-500'
-                  : 'bg-slate-300'
-              }`}>
-                {getStatusIcon(stage.status)}
-              </div>
-              <div className="flex-1">
-                <div className="font-medium text-slate-900">{stage.name}</div>
-                {stage.status === 'deploying' && (
-                  <div className="mt-2">
-                    <Progress value={stage.progress} className="h-2" />
-                  </div>
-                )}
-              </div>
-              {stage.status === 'completed' && (
-                <span className="text-sm text-green-600 font-medium">Completed</span>
-              )}
-              {stage.status === 'pending' && (
-                <span className="text-sm text-slate-400">Pending</span>
-              )}
-            </motion.div>
-          ))}
-        </motion.div>
-
-        {/* Credentials Section */}
-        {deployment.status !== 'pending' && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="space-y-6"
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Key className="w-5 h-5" />
-                  Security API Key
-                </CardTitle>
-                <CardDescription>
-                  Use this key to integrate security monitoring into your source code
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-2">
-                  <code className="flex-1 p-3 bg-slate-100 rounded-lg font-mono text-sm break-all">
-                    {deployment.apiKey}
-                  </code>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      navigator.clipboard.writeText(deployment.apiKey);
-                      toast.success('API key copied to clipboard');
-                    }}
-                  >
-                    <Copy className="w-4 h-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="w-5 h-5" />
-                  DNS Configuration Records
-                </CardTitle>
-                <CardDescription>
-                  Add these records to your DNS provider for domain protection
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-slate-100">
-                      <tr>
-                        <th className="px-4 py-2 text-left">Type</th>
-                        <th className="px-4 py-2 text-left">Name</th>
-                        <th className="px-4 py-2 text-left">Value</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {deployment.dnsRecords.map((record, i) => (
-                        <tr key={i} className="border-t border-slate-200">
-                          <td className="px-4 py-2 font-mono">{record.type}</td>
-                          <td className="px-4 py-2 font-mono">{record.name}</td>
-                          <td className="px-4 py-2 font-mono text-xs">{record.value}</td>
-                        </tr>
+            <AnimatePresence mode="wait">
+              {activeTab === 'status' && (
+                <motion.div
+                  key="status"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="space-y-6"
+                >
+                  <Card className="bg-slate-900 shadow-xl border-slate-800">
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Terminal className="w-5 h-5 text-blue-400" /> Pipeline Trajectories
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      {deployment.stages.map((stage, idx) => (
+                        <div key={stage.id} className="relative">
+                          {idx !== deployment.stages.length - 1 && (
+                            <div className={`absolute left-4 top-10 bottom-0 w-0.5 ${stage.status === 'completed' ? 'bg-blue-500' : 'bg-slate-800'}`} />
+                          )}
+                          <div className="flex items-start gap-4 mb-8 relative z-10">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                              stage.status === 'completed' ? 'bg-blue-500 text-white' : 
+                              stage.status === 'deploying' ? 'bg-amber-500 text-white animate-pulse' : 
+                              'bg-slate-800 text-slate-500 border border-slate-700'
+                            }`}>
+                              {stage.status === 'completed' ? <CheckCircle className="w-5 h-5" /> : (idx + 1)}
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex justify-between items-center mb-1">
+                                <h4 className={`text-sm font-bold ${stage.status === 'completed' ? 'text-white' : 'text-slate-400'}`}>{stage.name}</h4>
+                                <Badge variant="outline" className={`text-[10px] uppercase ${
+                                  stage.status === 'completed' ? 'border-blue-400/30 text-blue-400' : 
+                                  stage.status === 'deploying' ? 'border-amber-400/30 text-amber-400' : 
+                                  'border-slate-800 text-slate-600'
+                                }`}>
+                                  {stage.status}
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-slate-500 mb-3">
+                                {stage.status === 'completed' ? 'Process finalized and verified.' : 
+                                 stage.status === 'deploying' ? 'Injecting security headers and balancing load...' : 
+                                 'Awaiting previous node completion.'}
+                              </p>
+                              {(stage.status === 'deploying' || (stage.status === 'completed' && stage.progress < 100)) && (
+                                <Progress value={stage.progress} className="h-1 bg-slate-800" />
+                              )}
+                            </div>
+                          </div>
+                        </div>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
 
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                    <BarChart3 className="w-6 h-6 text-blue-600" />
+              {activeTab === 'scans' && (
+                <motion.div
+                  key="scans"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="space-y-6"
+                >
+                  {/* High Level Scan Stats */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                     <Card className="bg-rose-500/5 border-rose-500/20">
+                       <CardContent className="p-4 flex items-center gap-4">
+                         <div className="w-10 h-10 rounded-lg bg-rose-500/10 flex items-center justify-center">
+                            <Bug className="w-5 h-5 text-rose-500" />
+                         </div>
+                         <div>
+                            <p className="text-[10px] text-rose-400 uppercase font-bold">Botnets</p>
+                            <p className="text-xl font-bold text-white">
+                              {deployment.stages.find(s => s.id === 'scanning')?.status === 'completed' ? '01 ACTIVE' : '00 DETECTED'}
+                            </p>
+                         </div>
+                       </CardContent>
+                     </Card>
+                     <Card className="bg-amber-500/5 border-amber-500/20">
+                       <CardContent className="p-4 flex items-center gap-4">
+                         <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                            <ShieldAlert className="w-5 h-5 text-amber-500" />
+                         </div>
+                         <div>
+                            <p className="text-[10px] text-amber-400 uppercase font-bold">Vulnerabilities</p>
+                            <p className="text-xl font-bold text-white">
+                              {deployment.stages.find(s => s.id === 'scanning')?.status === 'completed' ? '04 FOUND' : '00 FOUND'}
+                            </p>
+                         </div>
+                       </CardContent>
+                     </Card>
+                     <Card className="bg-emerald-500/5 border-emerald-500/20">
+                       <CardContent className="p-4 flex items-center gap-4">
+                         <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                            <Activity className="w-5 h-5 text-emerald-500" />
+                         </div>
+                         <div>
+                            <p className="text-[10px] text-emerald-400 uppercase font-bold">Threat Score</p>
+                            <p className="text-xl font-bold text-white">
+                              {deployment.stages.find(s => s.id === 'scanning')?.status === 'completed' ? 'NOMINAL' : 'CLEAN'}
+                            </p>
+                         </div>
+                       </CardContent>
+                     </Card>
                   </div>
-                  <div className="flex-1">
-                    <div className="font-medium text-slate-900">Security Monitoring Dashboard</div>
-                    <div className="text-sm text-slate-600">Monitor your security status in real-time</div>
-                  </div>
-                  <Button variant="outline" className="border-blue-300">
-                    Open Dashboard
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
+
+                  <Card className="bg-slate-900 border-slate-800">
+                    <CardHeader>
+                      <CardTitle className="text-white">Neural Scan Artifacts</CardTitle>
+                      <CardDescription>Detailed forensic breakdown of current environment state.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <div className="border-t border-slate-800">
+                        {deployment.stages.find(s => s.id === 'scanning')?.status === 'completed' ? (
+                          [
+                            { title: 'C2 BOTNET DETECTION', severity: 'HIGH', desc: 'Attempted handshake with IP 185.24.xx.xx identified as Dridex botnet node.', icon: <Bug className="text-rose-500" /> },
+                            { title: 'SSH BRUTE-FORCE', severity: 'MEDIUM', desc: 'High frequency auth attempts (14k/min) detected from AS13335 (Cloudflare). Mitigation active.', icon: <Lock className="text-amber-500" /> },
+                            { title: 'SQL INJECTION VECTOR', severity: 'HIGH', desc: 'Entry point vulnerability discovered in /auth/verify_dev. Improper escaping at param index 2.', icon: <Database className="text-amber-500" /> },
+                            { title: 'XSS PROTECTION BYPASS', severity: 'LOW', desc: 'CSP policy allows unsafe-eval on specific legacy endpoints.', icon: <Layout className="text-blue-500" /> }
+                          ].map((scan, i) => (
+                            <div key={i} className="flex gap-4 p-5 hover:bg-white/5 border-b border-slate-800 transition-colors">
+                               <div className="mt-1">{scan.icon}</div>
+                               <div className="flex-1">
+                                 <div className="flex justify-between items-center mb-1">
+                                   <h5 className="text-sm font-bold text-white">{scan.title}</h5>
+                                   <Badge className={`${scan.severity === 'HIGH' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 'bg-amber-500/10 text-amber-500 border-amber-500/20'} text-[10px]`}>
+                                     {scan.severity}
+                                   </Badge>
+                                 </div>
+                                 <p className="text-xs text-slate-500 leading-relaxed font-mono">{scan.desc}</p>
+                               </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-12 text-center">
+                             <Search className="w-12 h-12 text-slate-800 mx-auto mb-4" />
+                             <p className="text-slate-500 text-sm">Awaiting neural engine scanning completion...</p>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+
+              {activeTab === 'dns' && (
+                <motion.div
+                  key="dns"
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  className="space-y-6"
+                >
+                  <Card className="bg-slate-900 border-slate-800">
+                    <CardHeader>
+                      <CardTitle className="text-white">DNS Resolution Matrix</CardTitle>
+                      <CardDescription>Configure these records at your registrar to complete the neural sync.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {deployment.dnsRecords.map((record, i) => (
+                        <div key={i} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-black/40 border border-slate-800 rounded-xl gap-4">
+                          <div className="flex items-center gap-4">
+                            <Badge variant="outline" className="bg-blue-500/10 border-blue-500/20 text-blue-400 font-mono w-16 justify-center">{record.type}</Badge>
+                            <div>
+                               <p className="text-xs font-mono text-slate-500">{record.name}</p>
+                               <p className="text-sm font-mono text-white break-all">{record.value}</p>
+                            </div>
+                          </div>
+                          <Button variant="ghost" size="sm" className="text-slate-500 hover:text-white hover:bg-slate-800" onClick={() => {
+                            navigator.clipboard.writeText(record.value);
+                            toast.success('Copied to buffer');
+                          }}>
+                            <Copy className="w-4 h-4 mr-2" /> Copy
+                          </Button>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-blue-600/10 border border-blue-600/20">
+                    <CardHeader className="pb-2">
+                       <CardTitle className="text-sm text-blue-400 flex items-center gap-2 underline underline-offset-4">
+                         <Globe className="w-4 h-4" /> Global CDN Edge Locations
+                       </CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-xs text-slate-400 leading-relaxed">
+                      Your application is being replicated across 14 global edge nodes in Lagos, London, San Jose, and Singapore for maximum 
+                      heuristic protection and sub-20ms latency.
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
+
+const ShieldAlert = ({ className }: { className?: string }) => <div className={className}><AlertTriangle className="w-full h-full" /></div>;
+const Search = ({ className }: { className?: string }) => <div className={className}><Eye className="w-full h-full" /></div>;

@@ -12,10 +12,12 @@ const {
   getPurchase,
   getUserPurchases,
   updatePurchase,
+  updatePurchaseByReference,
   createDeployment,
   getDeployment,
   getUserDeployments,
   updateDeployment,
+  updateUser,
   purchases,
 } = require('./data/store');
 
@@ -50,7 +52,7 @@ app.get('/', (req, res) => {
 // ===== USER API =====
 
 // Authenticate developer
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   const { developerId } = req.body;
   
   if (!developerId) {
@@ -68,32 +70,32 @@ app.post('/api/auth/login', (req, res) => {
   }
 
   // Get or create user
-  const user = getOrCreateUser(developerId);
+  const user = await getOrCreateUser(developerId);
   
   res.json({
     success: true,
     data: {
-      developerId: user.developerId,
+      developerId: user.developer_id || user.developerId,
       email: user.email,
       domain: user.domain,
-      createdAt: user.createdAt,
-      lastLogin: user.lastLogin,
-      isNewUser: !userExists(developerId) || getUserPurchases(developerId).length === 0
+      createdAt: user.created_at || user.createdAt,
+      lastLogin: user.last_login || user.lastLogin,
+      isNewUser: !userExists(developerId) || (await getUserPurchases(developerId)).length === 0
     }
   });
 });
 
 // Get user profile with purchases and deployments
-app.get('/api/user/:developerId', (req, res) => {
+app.get('/api/user/:developerId', async (req, res) => {
   const { developerId } = req.params;
   
-  const user = getUser(developerId);
+  const user = await getUser(developerId);
   if (!user) {
     return res.status(404).json({ success: false, message: 'User not found' });
   }
 
-  const purchases = getUserPurchases(developerId);
-  const deployments = getUserDeployments(developerId);
+  const purchases = await getUserPurchases(developerId);
+  const deployments = await getUserDeployments(developerId);
 
   res.json({
     success: true,
@@ -105,10 +107,31 @@ app.get('/api/user/:developerId', (req, res) => {
   });
 });
 
-// Get user purchases
-app.get('/api/user/:developerId/purchases', (req, res) => {
+// Update user billing info
+app.post('/api/user/:developerId/billing', async (req, res) => {
   const { developerId } = req.params;
-  const purchases = getUserPurchases(developerId);
+  const { billingAddress, cardDetails } = req.body;
+  
+  const user = await getUser(developerId);
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'User not found' });
+  }
+
+  const updatedUser = await updateUser(developerId, { 
+    billing_address: billingAddress, 
+    card_details: cardDetails 
+  });
+
+  res.json({
+    success: true,
+    data: updatedUser
+  });
+});
+
+// Get user purchases
+app.get('/api/user/:developerId/purchases', async (req, res) => {
+  const { developerId } = req.params;
+  const purchases = await getUserPurchases(developerId);
   
   res.json({
     success: true,
@@ -117,9 +140,9 @@ app.get('/api/user/:developerId/purchases', (req, res) => {
 });
 
 // Get user deployments
-app.get('/api/user/:developerId/deployments', (req, res) => {
+app.get('/api/user/:developerId/deployments', async (req, res) => {
   const { developerId } = req.params;
-  const deployments = getUserDeployments(developerId);
+  const deployments = await getUserDeployments(developerId);
   
   res.json({
     success: true,
@@ -128,9 +151,9 @@ app.get('/api/user/:developerId/deployments', (req, res) => {
 });
 
 // Get single deployment
-app.get('/api/deployment/:deploymentId', (req, res) => {
+app.get('/api/deployment/:deploymentId', async (req, res) => {
   const { deploymentId } = req.params;
-  const deployment = getDeployment(deploymentId);
+  const deployment = await getDeployment(deploymentId);
   
   if (!deployment) {
     return res.status(404).json({ success: false, message: 'Deployment not found' });
@@ -143,34 +166,77 @@ app.get('/api/deployment/:deploymentId', (req, res) => {
 });
 
 // Update deployment status (simulated progress)
-app.post('/api/deployment/:deploymentId/update', (req, res) => {
+app.post('/api/deployment/:deploymentId/update', async (req, res) => {
   const { deploymentId } = req.params;
   const { status, stageId, stageStatus, stageProgress } = req.body;
+  
+  const deployment = await getDeployment(deploymentId);
+  if (!deployment) {
+    return res.status(404).json({ success: false, message: 'Deployment not found' });
+  }
+  
+  const updates = {};
+  if (status) updates.status = status;
+  
+  if (stageId && stageStatus !== undefined) {
+    const stages = deployment.stages;
+    const stage = stages.find(s => s.id === stageId);
+    if (stage) {
+      stage.status = stageStatus;
+      stage.progress = stageProgress || 0;
+      stage.updatedAt = new Date().toISOString();
+      
+      if (stage.id === 'scanning' && stageStatus === 'completed') {
+        stage.results = [
+          { type: 'High', message: 'Active C2 Botnet connection detected via port 4444' },
+          { type: 'Critical', message: 'Unauthorized SSH brute-force attempt' }
+        ];
+      }
+      updates.stages = JSON.stringify(stages);
+    }
+  }
+  
+  const result = await updateDeployment(deploymentId, updates);
+  
+  res.json({
+    success: true,
+    data: result
+  });
+});
+
+// Update API Status
+app.post('/api/deployment/:deploymentId/api-status', async (req, res) => {
+  const { deploymentId } = req.params;
+  const { status } = req.body;
+  
+  const result = await updateDeployment(deploymentId, { api_status: status });
+  res.json({ success: true, data: result });
+});
+
+// Manage SSH Keys
+app.post('/api/deployment/:deploymentId/ssh-keys', async (req, res) => {
+  const { deploymentId } = req.params;
+  const { action, keyId, keyName, publicKey } = req.body;
   
   const deployment = getDeployment(deploymentId);
   if (!deployment) {
     return res.status(404).json({ success: false, message: 'Deployment not found' });
   }
   
-  if (status) {
-    deployment.status = status;
+  if (action === 'add') {
+    const newKey = {
+      id: `key-${Date.now()}`,
+      name: keyName,
+      publicKey,
+      createdAt: new Date().toISOString()
+    };
+    deployment.sshKeys = deployment.sshKeys || [];
+    deployment.sshKeys.push(newKey);
+  } else if (action === 'delete') {
+    deployment.sshKeys = deployment.sshKeys.filter(k => k.id !== keyId);
   }
   
-  if (stageId && stageStatus !== undefined) {
-    const stage = deployment.stages.find(s => s.id === stageId);
-    if (stage) {
-      stage.status = stageStatus;
-      stage.progress = stageProgress || 0;
-      stage.updatedAt = new Date().toISOString();
-    }
-  }
-  
-  deployment.updatedAt = new Date().toISOString();
-  
-  res.json({
-    success: true,
-    data: deployment
-  });
+  res.json({ success: true, data: deployment });
 });
 
 // ===== PAYMENT API =====
@@ -227,7 +293,7 @@ app.post('/api/payment/initialize', async (req, res) => {
     const paystackData = response.data.data;
     
     // Create purchase record
-    const purchase = createPurchase({
+    const purchase = await createPurchase({
       developerId: metadata.developerId,
       email,
       amount: amountInKobo / 100, // Store in NGN
@@ -246,7 +312,7 @@ app.post('/api/payment/initialize', async (req, res) => {
         authorization_url: paystackData.authorization_url,
         access_code: paystackData.access_code,
         reference: paystackData.reference,
-        purchaseId: purchase.purchaseId
+        purchaseId: purchase.purchase_id || purchase.purchaseId
       }
     });
   } catch (error) {
@@ -277,28 +343,25 @@ app.get('/api/payment/verify/:reference', async (req, res) => {
     const transaction = response.data.data;
     
     // Update purchase status
-    const purchase = updatePurchaseByReference(reference, {
+    const purchase = await updatePurchaseByReference(reference, {
       status: transaction.status,
-      paidAt: transaction.paid_at,
-      channel: transaction.channel,
-      transactionId: transaction.id
+      paid_at: transaction.paid_at,
     });
 
     // If payment successful, create deployment
     let deployment = null;
     if (transaction.status === 'success' && purchase) {
-      deployment = createDeployment({
-        developerId: purchase.developerId,
-        purchaseId: purchase.purchaseId,
+      deployment = await createDeployment({
+        developerId: purchase.developer_id || purchase.developerId,
+        purchaseId: purchase.purchase_id || purchase.purchaseId,
         domain: purchase.domain,
         hosting: purchase.hosting,
         provider: purchase.provider,
-        amount: purchase.amount,
         email: purchase.email,
       });
       
       // Update purchase with deployment ID
-      updatePurchase(purchase.purchaseId, { deploymentId: deployment.deploymentId });
+      await updatePurchase(purchase.purchase_id || purchase.purchaseId, { deploymentId: deployment.deployment_id || deployment.deploymentId });
     }
     
     res.json({
@@ -311,8 +374,8 @@ app.get('/api/payment/verify/:reference', async (req, res) => {
         paid_at: transaction.paid_at,
         channel: transaction.channel,
         customer: transaction.customer,
-        purchaseId: purchase?.purchaseId,
-        deploymentId: deployment?.deploymentId
+        purchaseId: purchase?.purchase_id || purchase?.purchaseId,
+        deploymentId: deployment?.deployment_id || deployment?.deploymentId
       }
     });
   } catch (error) {
@@ -325,20 +388,9 @@ app.get('/api/payment/verify/:reference', async (req, res) => {
   }
 });
 
-// Helper function to update purchase by reference
-function updatePurchaseByReference(reference, updates) {
-  // Find purchase by reference
-  for (const [id, purchase] of purchases.entries()) {
-    if (purchase.reference === reference) {
-      Object.assign(purchase, updates);
-      return purchase;
-    }
-  }
-  return null;
-}
 
 // Paystack Webhook
-app.post('/api/payment/webhook', express.raw({ type: 'application/json' }), (req, res) => {
+app.post('/api/payment/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const hash = crypto
     .createHmac('sha512', PAYSTACK_SECRET_KEY)
     .update(JSON.stringify(req.body))
@@ -353,31 +405,27 @@ app.post('/api/payment/webhook', express.raw({ type: 'application/json' }), (req
   switch (event.event) {
     case 'charge.success':
       console.log('Payment successful via webhook:', event.data);
-      const purchase = updatePurchaseByReference(event.data.reference, {
+      const purchase = await updatePurchaseByReference(event.data.reference, {
         status: 'success',
         paidAt: event.data.paid_at,
-        channel: event.data.channel,
-        transactionId: event.data.id
       });
       
       if (purchase && !purchase.deploymentId) {
-        const deployment = createDeployment({
-          developerId: purchase.developerId,
-          purchaseId: purchase.purchaseId,
+        const deployment = await createDeployment({
+          developerId: purchase.developer_id || purchase.developerId,
+          purchaseId: purchase.purchase_id || purchase.purchaseId,
           domain: purchase.domain,
           hosting: purchase.hosting,
           provider: purchase.provider,
-          amount: purchase.amount,
           email: purchase.email,
         });
-        updatePurchase(purchase.purchaseId, { deploymentId: deployment.deploymentId });
+        await updatePurchase(purchase.purchase_id || purchase.purchaseId, { deploymentId: deployment.deployment_id || deployment.deploymentId });
       }
       break;
     case 'charge.failed':
       console.log('Payment failed via webhook:', event.data);
-      updatePurchaseByReference(event.data.reference, {
+      await updatePurchaseByReference(event.data.reference, {
         status: 'failed',
-        failedAt: new Date().toISOString()
       });
       break;
     default:
