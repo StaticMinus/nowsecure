@@ -724,22 +724,48 @@ console.log('Neural Shield Active [Port 443]');`}
             
             {/* Purchase History Summary */}
             <Card className="bg-slate-900 border-slate-800">
-              <CardHeader className="pb-3 px-6 text-center">
-                <CardTitle className="text-xs text-slate-500 uppercase font-mono">Ledger History</CardTitle>
+              <CardHeader className="pb-3 px-6">
+                <CardTitle className="text-[10px] text-slate-500 uppercase font-mono tracking-widest">Transaction Ledger</CardTitle>
               </CardHeader>
-              <CardContent className="px-6 pb-6 pt-0 space-y-3">
+              <CardContent className="px-6 pb-6 pt-0 space-y-4">
                   {userData?.purchases && userData.purchases.length > 0 ? (
-                    userData.purchases.slice(0, 5).map(p => (
-                      <div key={p.purchaseId} className="flex justify-between items-center text-[10px] font-mono border-b border-slate-800 pb-2 hover:bg-white/5 transition-colors">
-                        <span className="text-slate-400">TX_{p.purchaseId?.toString().substr(0, 8)}</span>
-                        <span className="text-white font-bold">${p.amountUsd}</span>
-                      </div>
-                    ))
+                    <div className="space-y-3">
+                      {userData.purchases.slice(0, 5).map(p => (
+                        <div key={p.purchaseId} className="group flex flex-col gap-1 border-b border-slate-800 pb-3 last:border-0">
+                          <div className="flex justify-between items-center text-[10px] font-mono">
+                            <span className="text-slate-500">TX_{p.purchaseId?.toString().substr(0, 8)}</span>
+                            <span className="text-emerald-500 bg-emerald-500/5 px-1.5 rounded border border-emerald-500/10">PAID</span>
+                          </div>
+                          <div className="flex justify-between items-end">
+                            <div>
+                              <p className="text-[11px] font-bold text-white">${p.amountUsd}</p>
+                              <p className="text-[9px] text-slate-500 font-mono italic">
+                                {new Date(p.paidAt || p.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </p>
+                            </div>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-6 px-2 text-[9px] text-blue-400 hover:text-blue-300 hover:bg-blue-500/5"
+                              onClick={() => {
+                                toast.info("Generating Encrypted Invoice", {
+                                  description: `NS-INV-${p.purchaseId.substr(0, 6)} generated for ${p.email}`,
+                                });
+                              }}
+                            >
+                              GET INVOICE
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   ) : (
-                    <p className="text-[10px] text-slate-600 text-center italic">No transaction records found</p>
+                    <div className="py-8 text-center border border-dashed border-slate-800 rounded-lg">
+                      <p className="text-[10px] text-slate-600 font-mono italic">NO PERSISTED LEDGER DATA</p>
+                    </div>
                   )}
-                 <Button variant="link" size="sm" className="w-full text-[10px] text-blue-500 hover:text-blue-400 p-0 h-auto">
-                    View Full Transaction Logs
+                 <Button variant="link" size="sm" className="w-full text-center text-[10px] text-slate-500 hover:text-white p-0 h-auto font-mono mt-2">
+                    FETCH ARCHIVE LOGS (ADMIN ONLY)
                  </Button>
               </CardContent>
             </Card>
