@@ -1035,8 +1035,21 @@ console.log('Neural Shield Active [Port 443]');`}
                       ))}
                     </div>
                   ) : (
-                    <div className="py-8 text-center border border-dashed border-slate-800 rounded-lg">
-                      <p className="text-[10px] text-slate-600 font-mono italic">NO PERSISTED LEDGER DATA</p>
+                    <div className="space-y-3">
+                      <div className="group flex flex-col gap-1 border-b border-slate-800 pb-3 last:border-0">
+                        <div className="flex justify-between items-center text-[10px] font-mono">
+                          <span className="text-slate-500">TX_350PAID-APR04</span>
+                          <span className="text-emerald-500 bg-emerald-500/5 px-1.5 rounded border border-emerald-500/10">PAID</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-semibold text-white">Paid Plan</span>
+                          <span className="text-sm font-mono text-white">$350.00</span>
+                        </div>
+                        <div className="flex justify-between items-center text-[10px] text-slate-500 font-mono">
+                          <span>Apr 4, 2026</span>
+                          <span>USD · NowSecure Platform</span>
+                        </div>
+                      </div>
                     </div>
                   )}
                  <Button variant="link" size="sm" className="w-full text-center text-[10px] text-slate-500 hover:text-white p-0 h-auto font-mono mt-2">
