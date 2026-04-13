@@ -460,11 +460,11 @@ export function UserDashboard() {
                       </div>
                       <div className="space-y-2">
                         {[
-                          { threat: 'SQL Injection Campaign', date: '2026-04-10', severity: 'High', action: 'WAF Rules Patched' },
-                          { threat: 'Brute-Force SSH Attempts', date: '2026-04-08', severity: 'Medium', action: 'IP Range Blacklisted' },
-                          { threat: 'Cross-Site Scripting (XSS)', date: '2026-04-05', severity: 'Critical', action: 'Input Sanitizer Deployed' },
-                          { threat: 'DDoS Layer-7 Flood', date: '2026-04-01', severity: 'High', action: 'Rate Limiting Enforced' },
-                          { threat: 'Malicious Botnet Traffic', date: '2026-03-28', severity: 'Medium', action: 'Bot Scrubber Activated' },
+                          { threat: 'SQL Injection Campaign', date: '2026-04-06', severity: 'High', action: 'WAF Rules Patched' },
+                          { threat: 'Brute-Force SSH Attempts', date: '2026-04-06', severity: 'Medium', action: 'IP Range Blacklisted' },
+                          { threat: 'Cross-Site Scripting (XSS)', date: '2026-04-06', severity: 'Critical', action: 'Input Sanitizer Deployed' },
+                          { threat: 'DDoS Layer-7 Flood', date: '2026-04-06', severity: 'High', action: 'Rate Limiting Enforced' },
+                          { threat: 'Malicious Botnet Traffic', date: '2026-04-06', severity: 'Medium', action: 'Bot Scrubber Activated' },
                         ].map((record, i) => (
                           <div key={i} className="flex items-center justify-between p-3 bg-black/40 border border-slate-800/50 rounded-xl hover:border-emerald-500/20 transition-colors">
                             <div className="flex items-center gap-3">
@@ -514,7 +514,7 @@ export function UserDashboard() {
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                       >
-                        <Card className="bg-slate-900/50 border-slate-800 hover:border-blue-500/30 transition-all cursor-pointer group" onClick={() => navigate(`/deployment/${deployment.deploymentId}`)}>
+                        <Card className="bg-slate-900/50 border-slate-800 hover:border-blue-500/30 transition-all cursor-pointer group" onClick={() => window.open(`https://${deployment.domain}`, '_blank', 'noopener,noreferrer')}>
                           <CardContent className="p-5 flex items-center justify-between">
                             <div className="flex items-center gap-4">
                               <div className="w-12 h-12 bg-black border border-slate-800 rounded-xl flex items-center justify-center group-hover:border-blue-500/50 transition-colors">
@@ -761,44 +761,234 @@ console.log('Neural Shield Active [Port 443]');`}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       const input = e.currentTarget;
-                      const cmd = input.value.trim();
-                      if (!cmd) return;
+                      const cmdRaw = input.value.trim();
+                      if (!cmdRaw) return;
                       const output = document.getElementById('shell-output');
                       if (!output) return;
 
                       const cmdLine = document.createElement('p');
                       cmdLine.className = 'text-white';
-                      cmdLine.textContent = `root@nowsecure:~# ${cmd}`;
+                      cmdLine.textContent = `root@nowsecure:~# ${cmdRaw}`;
                       output.appendChild(cmdLine);
 
-                      const response = document.createElement('p');
+                      let lines: string[] = [];
+                      let colorClass = 'text-emerald-400';
+
+                      const fs: Record<string, Record<string, string>> = {
+                        '/': {
+                          'etc': 'dir',
+                          'var': 'dir',
+                          'home': 'dir',
+                          'root': 'dir',
+                          'readme.txt': 'NowSecure Node OS v4.2.0\nAuthorized access only.',
+                        },
+                        '/etc': {
+                          'hosts': '127.0.0.1 localhost\n104.16.85.20 redaidnigeria.org',
+                          'nginx.conf': 'server { listen 443 ssl; server_name redaidnigeria.org; }',
+                          'passwd': 'root:x:0:0:root:/root:/bin/bash',
+                        },
+                        '/var': {
+                          'log': 'dir',
+                          'www': 'dir',
+                        },
+                        '/var/log': {
+                          'auth.log': '[2026-04-06] SSH login from 192.168.1.45',
+                          'access.log': '[2026-04-06] 200 GET /api/health',
+                          'error.log': '[2026-04-06] 0 errors — all systems nominal',
+                        },
+                        '/home': {
+                          'developer': 'dir',
+                        },
+                        '/home/developer': {
+                          'notes.txt': 'Project redaidnigeria.org deployment notes',
+                        },
+                        '/root': {
+                          '.bashrc': '# bash configuration',
+                          'deploy.sh': '#!/bin/bash\necho Deploying NowSecure shield...',
+                        },
+                      };
+
+                      let cwd = (window as unknown as { __ns_cwd?: string }).__ns_cwd || '/root';
+
+                      const resolvePath = (p: string) => {
+                        if (p.startsWith('/')) return p;
+                        if (cwd === '/') return '/' + p;
+                        return cwd + '/' + p;
+                      };
+
+                      const getDir = (p: string) => {
+                        if (fs[p]) return p;
+                        const parent = p.split('/').slice(0, -1).join('/') || '/';
+                        const name = p.split('/').pop() || '';
+                        if (fs[parent] && fs[parent][name] === 'dir') return p;
+                        return null;
+                      };
+
+                      const getFile = (p: string) => {
+                        const parent = p.split('/').slice(0, -1).join('/') || '/';
+                        const name = p.split('/').pop() || '';
+                        if (fs[parent] && fs[parent][name] && fs[parent][name] !== 'dir') return fs[parent][name];
+                        return null;
+                      };
+
+                      const parts = cmdRaw.split(/\s+/);
+                      const cmd = parts[0];
+                      const arg = parts[1] || '';
+
                       if (cmd === 'help') {
-                        response.className = 'text-blue-400';
-                        response.textContent = 'Commands: ns-status, ns-scan <domain>, ns-services, ns-keygen, clear, whoami';
-                      } else if (cmd === 'ns-status') {
-                        response.className = 'text-emerald-400';
-                        response.textContent = 'All systems operational. Firewall: ACTIVE | Nodes: 3 | Uptime: 99.98%';
-                      } else if (cmd.startsWith('ns-scan')) {
-                        response.className = 'text-amber-400';
-                        response.textContent = `Scanning ${cmd.split(' ')[1] || 'target'}... Threats: 2 detected | Risk Score: 88.4/100`;
-                      } else if (cmd === 'ns-services') {
-                        response.className = 'text-emerald-400';
-                        response.textContent = 'WP Malware Removal: ACTIVE | PHP Sanitizer: ACTIVE | Traffic Scrubber: ACTIVE';
-                      } else if (cmd === 'ns-keygen') {
-                        response.className = 'text-blue-400';
-                        response.textContent = `Generated: ssh-rsa AAAAB3Nza...${Math.random().toString(36).substr(2, 20)} user@nowsecure`;
-                      } else if (cmd === 'whoami') {
-                        response.className = 'text-white';
-                        response.textContent = `developer@nowsecure [${userData?.user?.developerId || 'authenticated'}]`;
+                        colorClass = 'text-blue-400';
+                        lines = [
+                          'Available commands:',
+                          '  ls [path]      List directory contents',
+                          '  cd [path]      Change directory',
+                          '  pwd            Print working directory',
+                          '  cat <file>     Display file contents',
+                          '  clear          Clear terminal',
+                          '  whoami         Current user',
+                          '  date           Current system date',
+                          '  uptime         System uptime',
+                          '  ns-status      Node security status',
+                          '  ns-scan <domain>  Scan target domain',
+                          '  ping <host>    Ping a host',
+                          '  curl <url>     Fetch URL headers',
+                          '  df             Disk usage',
+                          '  ps             Running processes',
+                          '  netstat        Network connections',
+                          '  env            Environment variables',
+                          '  history        Command history',
+                        ];
+                      } else if (cmd === 'ls') {
+                        const target = arg ? resolvePath(arg) : cwd;
+                        const dir = getDir(target);
+                        if (dir && fs[dir]) {
+                          lines = Object.entries(fs[dir]).map(([name, type]) => {
+                            return type === 'dir' ? `${name}/` : name;
+                          });
+                        } else {
+                          colorClass = 'text-rose-400';
+                          lines = [`ls: cannot access '${target}': No such file or directory`];
+                        }
+                      } else if (cmd === 'cd') {
+                        const target = arg ? resolvePath(arg) : '/root';
+                        if (getDir(target)) {
+                          (window as unknown as { __ns_cwd?: string }).__ns_cwd = target;
+                          cwd = target;
+                          lines = [];
+                        } else {
+                          colorClass = 'text-rose-400';
+                          lines = [`bash: cd: ${target}: No such file or directory`];
+                        }
+                      } else if (cmd === 'pwd') {
+                        lines = [cwd];
+                      } else if (cmd === 'cat') {
+                        const target = arg ? resolvePath(arg) : '';
+                        const content = getFile(target);
+                        if (content) {
+                          colorClass = 'text-slate-300';
+                          lines = content.split('\n');
+                        } else {
+                          colorClass = 'text-rose-400';
+                          lines = [`cat: ${target}: No such file or directory`];
+                        }
                       } else if (cmd === 'clear') {
-                        output.innerHTML = '<p class="text-slate-600">NowSecure Shell v4.2.0 — Type \'help\' for commands</p>';
+                        output.innerHTML = '<p class="text-slate-600 mb-1">NowSecure Shell v4.2.0 — Type \'help\' for commands</p>';
                         input.value = '';
                         return;
+                      } else if (cmd === 'whoami') {
+                        lines = [`developer@nowsecure [${userData?.user?.developerId || 'authenticated'}]`];
+                      } else if (cmd === 'date') {
+                        lines = [new Date().toUTCString()];
+                      } else if (cmd === 'uptime') {
+                        lines = ['up 42 days, 6 hours, 12 minutes'];
+                      } else if (cmd === 'ns-status') {
+                        const nodeCount = userData?.deployments?.length || 1;
+                        lines = [`Firewall: ACTIVE | Nodes: ${nodeCount} | WAF: ONLINE | Uptime: 99.98%`];
+                      } else if (cmd.startsWith('ns-scan')) {
+                        const target = arg || 'redaidnigeria.org';
+                        colorClass = 'text-amber-400';
+                        lines = [
+                          `Initializing deep scan on ${target}...`,
+                          '[DNS] Records verified',
+                          '[SSL] Certificate valid (TLS 1.3)',
+                          '[WAF] 4.2k hits filtered',
+                          '[MALWARE] 0 active threats',
+                          `Scan complete. Risk Score: 12.3/100 (LOW)`,
+                        ];
+                      } else if (cmd === 'ping') {
+                        const target = arg || 'redaidnigeria.org';
+                        colorClass = 'text-blue-400';
+                        lines = [
+                          `PING ${target} (104.16.85.20) 56(84) bytes of data.`,
+                          '64 bytes from 104.16.85.20: icmp_seq=1 ttl=58 time=14.2 ms',
+                          '64 bytes from 104.16.85.20: icmp_seq=2 ttl=58 time=13.8 ms',
+                          '64 bytes from 104.16.85.20: icmp_seq=3 ttl=58 time=14.1 ms',
+                          '--- ping statistics ---',
+                          '3 packets transmitted, 3 received, 0% packet loss, time 2003ms',
+                        ];
+                      } else if (cmd === 'curl') {
+                        const target = arg || 'https://redaidnigeria.org';
+                        colorClass = 'text-blue-400';
+                        lines = [
+                          `> GET ${target} HTTP/2`,
+                          '> Host: ' + target.replace(/^https?:\/\//, ''),
+                          '> User-Agent: ns-curl/7.88.1',
+                          '>',
+                          '< HTTP/2 200',
+                          '< content-type: text/html; charset=utf-8',
+                          '< cf-ray: 8f3a2b1c-dfw-01',
+                          '< server: cloudflare',
+                        ];
+                      } else if (cmd === 'df') {
+                        colorClass = 'text-slate-300';
+                        lines = [
+                          'Filesystem     1K-blocks     Used Available Use% Mounted on',
+                          '/dev/sda1       102400000 23450000  78950000  23% /',
+                          '/dev/sdb1       512000000 12400000 499600000   3% /var',
+                        ];
+                      } else if (cmd === 'ps') {
+                        colorClass = 'text-slate-300';
+                        lines = [
+                          '  PID TTY          TIME CMD',
+                          '    1 ?        00:00:03 systemd',
+                          '  452 ?        00:02:14 nginx',
+                          '  891 ?        00:04:22 node server.js',
+                          ' 1203 ?        00:01:45 ns-shield-daemon',
+                          ' 2044 ?        00:00:12 postgres',
+                        ];
+                      } else if (cmd === 'netstat') {
+                        colorClass = 'text-slate-300';
+                        lines = [
+                          'Proto Recv-Q Send-Q Local Address           Foreign Address         State',
+                          'tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN',
+                          'tcp        0      0 0.0.0.0:443             0.0.0.0:*               LISTEN',
+                          'tcp        0      0 127.0.0.1:3001          0.0.0.0:*               LISTEN',
+                          'tcp        0      0 192.168.1.10:22         192.168.1.45:51234      ESTABLISHED',
+                        ];
+                      } else if (cmd === 'env') {
+                        colorClass = 'text-slate-300';
+                        lines = [
+                          'HOME=/root',
+                          'USER=root',
+                          'SHELL=/bin/bash',
+                          'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+                          'NODE_ENV=production',
+                          'NS_DOMAIN=redaidnigeria.org',
+                        ];
+                      } else if (cmd === 'history') {
+                        colorClass = 'text-slate-300';
+                        lines = ['  1 ns-status', '  2 ns-scan redaidnigeria.org', '  3 ls /var/log', '  4 whoami'];
                       } else {
-                        response.className = 'text-rose-400';
-                        response.textContent = `ns: command not found: ${cmd}`;
+                        colorClass = 'text-rose-400';
+                        lines = [`bash: ${cmd}: command not found`];
                       }
-                      output.appendChild(response);
+
+                      lines.forEach((line) => {
+                        const p = document.createElement('p');
+                        p.className = colorClass + ' whitespace-pre-wrap';
+                        p.textContent = line;
+                        output.appendChild(p);
+                      });
+
                       output.scrollTop = output.scrollHeight;
                       input.value = '';
                     }
