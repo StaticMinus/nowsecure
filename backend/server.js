@@ -37,7 +37,8 @@ const USD_TO_NGN_RATE = 1383.46;
 
 // Authorized developer IDs (in production, use a database)
 const AUTHORIZED_DEVELOPER_IDS = [
-  'NS-ANDROID-WX8LTIBT-0IR5TC9E-RI1PQ023'
+  'NS-ANDROID-WX8LTIBT-0IR5TC9E-RI1PQ023',
+  '74839261590427386105'
 ];
 
 // Health check

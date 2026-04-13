@@ -28,7 +28,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { toast } from 'sonner';
 
 // Predefined developer ID for authentication - Android Developer Key
-const AUTHORIZED_DEVELOPER_ID = 'NS-ANDROID-WX8LTIBT-0IR5TC9E-RI1PQ023';
+const AUTHORIZED_DEVELOPER_IDS = [
+  'NS-ANDROID-WX8LTIBT-0IR5TC9E-RI1PQ023',
+  '74839261590427386105'
+];
 
 const developerTypes = [
   { id: 'apple', name: 'Apple Developer', icon: Apple },
@@ -113,7 +116,7 @@ function AuthenticationStep({ onAuthenticated }: { onAuthenticated: (devId: stri
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500));
 
-    if (developerId === AUTHORIZED_DEVELOPER_ID) {
+    if (AUTHORIZED_DEVELOPER_IDS.includes(developerId)) {
       toast.success('Authentication successful!');
       onAuthenticated(developerId);
     } else {
