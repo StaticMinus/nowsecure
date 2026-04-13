@@ -44,7 +44,7 @@ export interface Deployment {
   provider: string;
   amount: number;
   email: string;
-  status: 'pending' | 'deploying' | 'active' | 'failed' | 'completed';
+  status: 'pending' | 'deploying' | 'active' | 'failed' | 'completed' | 'running';
   stages: DeploymentStage[];
   apiKey: string;
   dnsRecords: Array<{ type: string; name: string; value: string }>;

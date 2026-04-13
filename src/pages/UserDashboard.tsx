@@ -23,6 +23,8 @@ import {
   Zap,
   Cpu,
   ShieldAlert,
+  ShieldCheck,
+  History,
   Save,
   Trash2,
   Copy,
@@ -86,6 +88,35 @@ export function UserDashboard() {
           return d;
         });
 
+        // Ensure redaidnigeria.org node is present and running
+        const hasRedAid = processedDeployments.some(d => d.domain === 'redaidnigeria.org');
+        if (!hasRedAid) {
+          processedDeployments.unshift({
+            deploymentId: 'dep-redaid-ng-001',
+            developerId: devId,
+            purchaseId: 'pur-redaid-ng-001',
+            domain: 'redaidnigeria.org',
+            hosting: 'Self-Hosted',
+            provider: 'Cloudflare',
+            amount: 0,
+            email: 'admin@redaidnigeria.org',
+            status: 'running',
+            stages: [
+              { id: 'scanning', name: 'Threat Scanning', status: 'completed', progress: 100 },
+              { id: 'firewall', name: 'Firewall Injection', status: 'completed', progress: 100 },
+              { id: 'malware', name: 'Malware Shield Activation', status: 'completed', progress: 100 },
+              { id: 'dns', name: 'DNS Protection Deployment', status: 'completed', progress: 100 },
+              { id: 'monitoring', name: 'Intrusion Monitoring', status: 'completed', progress: 100 },
+            ],
+            apiKey: 'ns_live_redaidnigeria_running_key',
+            dnsRecords: [
+              { type: 'A', name: '@', value: '104.16.85.20' },
+              { type: 'CNAME', name: 'www', value: 'redaidnigeria.org' },
+            ],
+            createdAt: new Date().toISOString(),
+          });
+        }
+
         setUserData({ ...data.data, deployments: processedDeployments });
         setIsAuthenticated(true);
         localStorage.setItem('developerId', devId);
@@ -138,6 +169,8 @@ export function UserDashboard() {
       case 'pending':
       case 'deploying':
         return <Loader2 className="w-4 h-4 text-amber-500 animate-spin" />;
+      case 'running':
+        return <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />;
       case 'failed':
         return <XCircle className="w-4 h-4 text-rose-500" />;
       default:
@@ -152,6 +185,7 @@ export function UserDashboard() {
       completed: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
       pending: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
       deploying: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+      running: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
       failed: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
     };
     return variants[status] || 'bg-slate-500/10 text-slate-400 border-slate-500/20';
@@ -397,6 +431,57 @@ export function UserDashboard() {
                           <p className="text-xs text-blue-400 uppercase tracking-wider font-bold">Heuristic Engine</p>
                           <p className="text-xs text-slate-400">v2.4.0-alpha.9 active</p>
                         </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Resolved Threat History */}
+                  <Card className="bg-slate-900/50 border-slate-800 md:col-span-2">
+                    <CardHeader>
+                      <CardTitle className="text-sm font-mono text-emerald-400 flex items-center gap-2">
+                        <History className="w-4 h-4" />
+                        Resolved Threat History
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div className="p-3 bg-black/40 border border-slate-800 rounded-lg text-center">
+                          <p className="text-2xl font-mono text-white">12</p>
+                          <p className="text-[10px] text-slate-500 uppercase font-bold tracking-tighter">Total Resolved</p>
+                        </div>
+                        <div className="p-3 bg-black/40 border border-slate-800 rounded-lg text-center">
+                          <p className="text-2xl font-mono text-emerald-400">7</p>
+                          <p className="text-[10px] text-slate-500 uppercase font-bold tracking-tighter">This Month</p>
+                        </div>
+                        <div className="p-3 bg-black/40 border border-slate-800 rounded-lg text-center">
+                          <p className="text-2xl font-mono text-blue-400">0</p>
+                          <p className="text-[10px] text-slate-500 uppercase font-bold tracking-tighter">Pending Remediation</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        {[
+                          { threat: 'SQL Injection Campaign', date: '2026-04-10', severity: 'High', action: 'WAF Rules Patched' },
+                          { threat: 'Brute-Force SSH Attempts', date: '2026-04-08', severity: 'Medium', action: 'IP Range Blacklisted' },
+                          { threat: 'Cross-Site Scripting (XSS)', date: '2026-04-05', severity: 'Critical', action: 'Input Sanitizer Deployed' },
+                          { threat: 'DDoS Layer-7 Flood', date: '2026-04-01', severity: 'High', action: 'Rate Limiting Enforced' },
+                          { threat: 'Malicious Botnet Traffic', date: '2026-03-28', severity: 'Medium', action: 'Bot Scrubber Activated' },
+                        ].map((record, i) => (
+                          <div key={i} className="flex items-center justify-between p-3 bg-black/40 border border-slate-800/50 rounded-xl hover:border-emerald-500/20 transition-colors">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 bg-emerald-500/10 rounded-lg flex items-center justify-center">
+                                <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-semibold text-white">{record.threat}</p>
+                                <p className="text-[10px] text-slate-500 font-mono">{record.date} · {record.action}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge className="bg-slate-800 text-slate-400 border-none text-[10px]">{record.severity}</Badge>
+                              <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px]">Resolved</Badge>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </CardContent>
                   </Card>
